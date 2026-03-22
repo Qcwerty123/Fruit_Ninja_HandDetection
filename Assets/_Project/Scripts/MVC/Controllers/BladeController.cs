@@ -1,26 +1,27 @@
 using UnityEngine;
+using Reflex.Attributes; // Thư viện DI
 
 public class BladeController : MonoBehaviour
 {
+    [Header("References")]
     [SerializeField] private BladeView view;
+    
+    [Header("Settings")]
     [SerializeField] private LayerMask fruitLayer;
     [SerializeField] private float minSliceVelocity = 0.01f;
 
-    private IInputService _inputService;
+    // Reflex tự động tìm IInputService trong Container và bơm vào đây
+    [Inject] private readonly IInputService _inputService;
+
+    // Bộ đệm tĩnh Zero-Allocation: Tối đa chém trúng 10 object trong 1 frame
+    private readonly RaycastHit2D[] _hitsBuffer = new RaycastHit2D[10];
+    
     private Vector2 _previousPosition;
     private bool _isSlicing;
 
-    // Hàm nhận Dependency từ bên ngoài bơm vào
-    public void Construct(IInputService inputService)
-    {
-        _inputService = inputService;
-    }
-
     private void Update()
     {
-        // Chặn logic nếu chưa có Input Service
-        if (_inputService == null) return;
-
+        // An toàn 100%: Dependency chắc chắn đã được Reflex bơm vào trước Update
         if (_inputService.IsSwiping())
         {
             ContinueSlice();
@@ -38,11 +39,9 @@ public class BladeController : MonoBehaviour
         if (!_isSlicing)
         {
             _isSlicing = true;
-            
+            // Di chuyển đến vị trí mới TRƯỚC khi bật vẽ (chống lỗi dính nét)
             view.UpdatePosition(currentPosition);
-
             view.StartSlicing();
-            
             _previousPosition = currentPosition;
             return;
         }
@@ -52,11 +51,29 @@ public class BladeController : MonoBehaviour
         float distance = Vector2.Distance(currentPosition, _previousPosition);
         if (distance > minSliceVelocity)
         {
-            RaycastHit2D hit = Physics2D.Linecast(_previousPosition, currentPosition, fruitLayer);
+            // Quét tia vật lý từ vị trí cũ đến vị trí mới
+            int hitCount = Physics2D.LinecastNonAlloc(_previousPosition, currentPosition, _hitsBuffer, fruitLayer);
             
-            if (hit.collider != null)
+            for (int i = 0; i < hitCount; i++)
             {
-                Debug.Log($"<color=green>CHẶT ĐỨT: {hit.collider.gameObject.name}</color>");
+                Collider2D hitCollider = _hitsBuffer[i].collider;
+                
+                // Kiểm tra va chạm hợp lệ
+                if (hitCollider != null && hitCollider.enabled)
+                {
+                    // Tắt ngay va chạm để chống chém đúp
+                    hitCollider.enabled = false; 
+
+                    // Debug để kiểm tra    
+                    Debug.Log($"<color=green>CHẶT ĐỨT: {hitCollider.gameObject.name}</color>");
+                    
+                    // Giao tiếp với trái cây
+                    if (hitCollider.TryGetComponent(out FruitController fruit))
+                    {
+                        Vector2 cutDirection = currentPosition - _previousPosition;
+                        fruit.Slice(cutDirection); // Hàm này ta đã viết ở Ngày 3
+                    }
+                }
             }
         }
 

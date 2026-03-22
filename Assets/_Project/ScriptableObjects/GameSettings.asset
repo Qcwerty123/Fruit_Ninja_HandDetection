@@ -16,5 +16,5 @@ MonoBehaviour:
   maxSpawnDelay: 2
   minSpawnForce: 12
   maxSpawnForce: 17
-  startingLives: 3
+  startingLives: 5
   minimumSwipeDistance: 0.5

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 97344357523a07744bc13e4fdca025c5, type: 3}
   m_Name: Watermelon
   m_EditorClassIdentifier: 
-  fruitName: 
+  fruitName: Watermelon
   scoreValue: 1
   isBomb: 0
   wholePrefab: {fileID: 0}

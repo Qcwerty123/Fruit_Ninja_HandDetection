@@ -9,12 +9,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 97344357523a07744bc13e4fdca025c5, type: 3}
-  m_Name: Bomb
+  m_Script: {fileID: 11500000, guid: f50e4916e4924f2788a73057a16764c0, type: 3}
+  m_Name: ReflexSettings
   m_EditorClassIdentifier: 
-  fruitName: Bomb
-  scoreValue: 1
-  isBomb: 1
-  wholePrefab: {fileID: 0}
-  slicedPrefab: {fileID: 0}
-  juiceParticle: {fileID: 0}
+  <LogLevel>k__BackingField: 0
+  <RootScopes>k__BackingField:
+  - {fileID: 8772566293833305188, guid: 4cec301e5e64d6d49bc140b19980a2c1, type: 3}

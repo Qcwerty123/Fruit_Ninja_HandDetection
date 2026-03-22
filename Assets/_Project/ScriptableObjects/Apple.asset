@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 97344357523a07744bc13e4fdca025c5, type: 3}
   m_Name: Apple
   m_EditorClassIdentifier: 
-  fruitName: 
+  fruitName: Apple
   scoreValue: 1
   isBomb: 0
-  wholePrefab: {fileID: 0}
-  slicedPrefab: {fileID: 0}
-  juiceParticle: {fileID: 0}
+  wholePrefab: {fileID: 4273925979974701064, guid: 6e28637ba032bc24f9987e365ea2fad9, type: 3}
+  slicedPrefab: {fileID: 463047811900108987, guid: 361f7941893e0bc41a09a5cc62ef71fc, type: 3}
+  juiceParticle: {fileID: 6115219206632827437, guid: 33b1018e0b8927d43b97a08ff6cc6cdd, type: 3}
