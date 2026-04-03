@@ -9,7 +9,9 @@ public class FruitData : ScriptableObject
     public bool isBomb = false;
 
     [Header("Visuals")]
-    public GameObject wholePrefab;      // Prefab trái cây nguyên vẹn
+    public GameObject fruitPrefab;      // Prefab trái cây nguyên vẹn
     public GameObject slicedPrefab;     // Prefab chứa 2 nửa trái cây đã cắt
     public GameObject juiceParticle;    // Hiệu ứng nước ép văng ra
+    public AudioClip sliceSound;        // Âm thanh khi bị chém
+
 }

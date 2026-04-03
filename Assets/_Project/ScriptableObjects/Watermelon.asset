@@ -15,6 +15,7 @@ MonoBehaviour:
   fruitName: Watermelon
   scoreValue: 1
   isBomb: 0
-  wholePrefab: {fileID: 0}
-  slicedPrefab: {fileID: 0}
-  juiceParticle: {fileID: 0}
+  wholePrefab: {fileID: 4273925979974701064, guid: ba8ebc0d5025a924eaee4c83068bc295, type: 3}
+  slicedPrefab: {fileID: 463047811900108987, guid: 515573cf806311d49a86c7a3cc53e714, type: 3}
+  juiceParticle: {fileID: 6115219206632827437, guid: 33b1018e0b8927d43b97a08ff6cc6cdd, type: 3}
+  sliceSound: {fileID: 0}

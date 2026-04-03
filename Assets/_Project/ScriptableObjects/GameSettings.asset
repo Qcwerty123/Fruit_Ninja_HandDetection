@@ -12,9 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2589769fe3b072143b405391a80d82ad, type: 3}
   m_Name: GameSettings
   m_EditorClassIdentifier: 
-  minSpawnDelay: 0.5
-  maxSpawnDelay: 2
-  minSpawnForce: 12
-  maxSpawnForce: 17
-  startingLives: 5
-  minimumSwipeDistance: 0.5
+  _startingLives: 3
+  _availableFruits:
+  - {fileID: 11400000, guid: 4c100a3ff04c1f44db5f06ab051616b9, type: 2}
+  _minDelay: 0.4
+  _maxDelay: 1.2
+  _minForce: 13
+  _maxForce: 17
+  _minTorque: -20
+  _maxTorque: 20
+  _maxAngle: 15

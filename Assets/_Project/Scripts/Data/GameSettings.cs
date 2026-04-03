@@ -1,15 +1,38 @@
 using UnityEngine;
+using System.Collections.Generic;
 
-[CreateAssetMenu(fileName = "GameSettings", menuName = "Fruit Ninja/Game Settings")]
+[CreateAssetMenu(fileName = "SO_GameSettings", menuName = "Fruit Ninja/Game Settings")]
 public class GameSettings : ScriptableObject
 {
-    [Header("Spawner Settings")]
-    public float minSpawnDelay = 0.5f;
-    public float maxSpawnDelay = 2.0f;
-    public float minSpawnForce = 12f;
-    public float maxSpawnForce = 17f;
-    
-    [Header("Game Rules")]
-    public int startingLives = 3;
-    public float minimumSwipeDistance = 0.5f; // Khoảng cách tối thiểu để ghi nhận 1 nét chém
+    [Header("Gameplay Rules")]
+    [Tooltip("Số mạng tối đa của người chơi khi bắt đầu game")]
+    [SerializeField] private int _startingLives = 3;
+
+    [Header("Global Content")]
+    [Tooltip("Danh sách toàn bộ trái cây và bom có thể xuất hiện trong game")]
+    [SerializeField] private List<FruitData> _availableFruits = new List<FruitData>();
+
+    [Header("Spawn Settings (Độ khó)")]
+    [SerializeField] private float _minDelay = 0.4f;
+    [SerializeField] private float _maxDelay = 1.2f;
+
+    [Header("Launch Physics (Vật lý ném)")]
+    [SerializeField] private float _minForce = 13f;
+    [SerializeField] private float _maxForce = 17f;
+    [SerializeField] private float _minTorque = -20f;
+    [SerializeField] private float _maxTorque = 20f;
+    [SerializeField] private float _maxAngle = 15f;
+
+    // --- PUBLIC PROPERTIES (Read-only) ---
+    public int StartingLives => _startingLives;
+    public IReadOnlyList<FruitData> AvailableFruits => _availableFruits;
+
+    // Properties cho Spawner
+    public float MinDelay => _minDelay;
+    public float MaxDelay => _maxDelay;
+    public float MinForce => _minForce;
+    public float MaxForce => _maxForce;
+    public float MinTorque => _minTorque;
+    public float MaxTorque => _maxTorque;
+    public float MaxAngle => _maxAngle;
 }
