@@ -37,7 +37,7 @@ public class ComboService
             await UniTask.WaitForSeconds(0.15f, cancellationToken: ct);
 
             // Nếu qua 0.15s người chơi không chém thêm quả nào -> Chốt sổ
-            if (_currentCombo >= 3)
+            if (_currentCombo >= 1)
             {
                 // Thưởng điểm bằng đúng số combo (Chém 4 quả = Thưởng 4 điểm)
                 _gameModel.AddScore(_currentCombo);

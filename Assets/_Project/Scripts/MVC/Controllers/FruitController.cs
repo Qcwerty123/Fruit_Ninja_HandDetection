@@ -125,4 +125,13 @@ public class FruitController : MonoBehaviour
             _pool?.Release(this);
         }
     }
+
+    public bool IsBomb()
+    {
+        if (_data != null)
+        {
+            return _data.isBomb;
+        }
+        return false;
+    }
 }

@@ -12,6 +12,7 @@ public class BladeController : MonoBehaviour
 
     // Reflex tự động tìm IInputService trong Container và bơm vào đây
     [Inject] private readonly IInputService _inputService;
+    [Inject] private readonly GameModel _gameModel;
 
     // Bộ đệm tĩnh Zero-Allocation: Tối đa chém trúng 10 object trong 1 frame
     private readonly RaycastHit2D[] _hitsBuffer = new RaycastHit2D[10];
@@ -21,6 +22,8 @@ public class BladeController : MonoBehaviour
 
     private void Update()
     {
+        if (_gameModel.State.Value != GameState.Playing) return;
+        
         // An toàn 100%: Dependency chắc chắn đã được Reflex bơm vào trước Update
         if (_inputService.IsSwiping())
         {
@@ -30,6 +33,7 @@ public class BladeController : MonoBehaviour
         {
             StopSlice();
         }
+
     }
 
     private void ContinueSlice()

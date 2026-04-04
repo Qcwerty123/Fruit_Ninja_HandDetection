@@ -15,6 +15,7 @@ MonoBehaviour:
   fruitName: Bomb
   scoreValue: 1
   isBomb: 1
-  wholePrefab: {fileID: 0}
+  fruitPrefab: {fileID: 8957990590071727976, guid: 0894a7bcea8aee2418cc68fe74b31c37, type: 3}
   slicedPrefab: {fileID: 0}
   juiceParticle: {fileID: 0}
+  sliceSound: {fileID: 0}

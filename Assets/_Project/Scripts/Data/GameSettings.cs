@@ -16,6 +16,11 @@ public class GameSettings : ScriptableObject
     [SerializeField] private float _minDelay = 0.4f;
     [SerializeField] private float _maxDelay = 1.2f;
 
+    [Header("Spawn Rates")]
+    [Range(0f, 1f)] 
+    [Tooltip("Tỷ lệ ra Bom: 0 = Không bao giờ, 1 = 100% ra Bom, 0.15 = 15%")]
+    [SerializeField] private float bombSpawnChance = 0.15f; // Mặc định 15%
+
     [Header("Launch Physics (Vật lý ném)")]
     [SerializeField] private float _minForce = 13f;
     [SerializeField] private float _maxForce = 17f;
@@ -35,4 +40,5 @@ public class GameSettings : ScriptableObject
     public float MinTorque => _minTorque;
     public float MaxTorque => _maxTorque;
     public float MaxAngle => _maxAngle;
+    public float BombSpawnChance => bombSpawnChance;
 }
