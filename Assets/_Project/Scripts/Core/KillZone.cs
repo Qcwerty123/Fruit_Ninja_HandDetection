@@ -21,7 +21,7 @@ public class KillZone : MonoBehaviour
             if (_gameModel != null && !fruit.IsBomb() && _gameModel.State.Value == GameState.Playing)
             {
                 _gameModel.LoseLife();
-                Debug.Log($"<color=orange>HỤT! CÒN LẠI: {_gameModel.Lives.Value} MẠNG</color>");
+                //Debug.Log($"<color=orange>HỤT! CÒN LẠI: {_gameModel.Lives.Value} MẠNG</color>");
             }
         }
     }

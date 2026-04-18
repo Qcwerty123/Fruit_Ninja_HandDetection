@@ -17,5 +17,7 @@ MonoBehaviour:
   isBomb: 0
   fruitPrefab: {fileID: 4273925979974701064, guid: 6e28637ba032bc24f9987e365ea2fad9, type: 3}
   slicedPrefab: {fileID: 463047811900108987, guid: 361f7941893e0bc41a09a5cc62ef71fc, type: 3}
-  juiceParticle: {fileID: 6115219206632827437, guid: 33b1018e0b8927d43b97a08ff6cc6cdd, type: 3}
+  baseJuiceParticle: {fileID: 3037950481174323527, guid: 4d96e816d3c48a14eaac35ea5a0019dc, type: 3}
+  splashColor: {r: 0.690566, g: 0, b: 0, a: 0.70980394}
+  specialJuiceParticle: {fileID: 0}
   sliceSound: {fileID: 0}

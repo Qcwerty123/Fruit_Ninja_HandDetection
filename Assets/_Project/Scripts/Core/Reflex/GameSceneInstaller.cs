@@ -6,6 +6,8 @@ public class GameSceneInstaller : MonoBehaviour, IInstaller
 {
     [Header("Game Settings & Configs")]
     [SerializeField] private GameSettings gameSettings;
+    [SerializeField] private AudioService audioService;
+    [SerializeField] private ScreenFlashService screenFlashService;
 
     public void InstallBindings(ContainerBuilder builder)
     {
@@ -30,16 +32,19 @@ public class GameSceneInstaller : MonoBehaviour, IInstaller
         builder.RegisterValue(inputService, new Type [] { typeof(IInputService) });
 
         // 5. Khởi tạo & Đăng ký Hệ thống Âm thanh (Audio)
-        AudioService audioService = new AudioService();
         builder.RegisterValue(audioService, new Type [] { typeof(AudioService) });
 
-        // 6. Khởi tạo & Đăng ký Kho trái cây (Fruit Pool)
+        // 6. Khởi tạo & Đăng ký Hệ thống Flash màn hình (Screen Flash)
+        builder.RegisterValue(screenFlashService);
+
+        // 7. Khởi tạo & Đăng ký Kho trái cây (Fruit Pool)
         // Bơm tất cả các dịch vụ trên vào đây để nó truyền xuống từng quả trái cây
         FruitPoolService fruitPoolService = new FruitPoolService(
             gameModel, 
             comboService, 
             vfxPoolService,
-            audioService
+            audioService,
+            screenFlashService
         );
         builder.RegisterValue(fruitPoolService);
 
