@@ -1,0 +1,1 @@
+sau khi tích hợp được Handetection thì làm chém theo phần trăm quả chứ không phải chia đôi nữa.

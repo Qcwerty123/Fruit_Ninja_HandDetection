@@ -31,6 +31,9 @@ public class GameSceneInstaller : MonoBehaviour, IInstaller
         IInputService inputService = new ScreenInputService();
         builder.RegisterValue(inputService, new Type [] { typeof(IInputService) });
 
+        // IInputService handTrackingInputService = new HandTrackingInputService(FindObjectOfType<UDPReceiverService>());
+        // builder.RegisterValue(handTrackingInputService, new Type [] { typeof(IInputService) });
+
         // 5. Khởi tạo & Đăng ký Hệ thống Âm thanh (Audio)
         builder.RegisterValue(audioService, new Type [] { typeof(AudioService) });
 

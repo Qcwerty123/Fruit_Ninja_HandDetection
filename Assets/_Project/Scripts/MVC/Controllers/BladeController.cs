@@ -42,6 +42,11 @@ public class BladeController : MonoBehaviour
 
     private void Update()
     {
+        // if (_inputService is HandTrackingInputService handInput)
+        // {
+        //     handInput.Update();
+        // }
+
         if (_gameModel.State.Value != GameState.Playing) return;
         
         // 1. Nếu lưỡi kiếm bị khóa (do chém trúng bom), dừng cập nhật vị trí mới
