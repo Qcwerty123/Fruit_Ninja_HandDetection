@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Pool;
 
@@ -11,14 +12,16 @@ public class FruitPoolService
     private readonly ComboService _comboService;
     private readonly VFXPoolService _vfxPoolService;
     private readonly AudioService _audioService;
+    private readonly ScreenFlashService _screenFlashService;
     private readonly Transform _poolRoot;
 
-    public FruitPoolService(GameModel gameModel, ComboService comboService, VFXPoolService vfxPoolService, AudioService audioService)
+    public FruitPoolService(GameModel gameModel, ComboService comboService, VFXPoolService vfxPoolService, AudioService audioService, ScreenFlashService screenFlashService)
     {
         _gameModel = gameModel;
         _comboService = comboService;
         _vfxPoolService = vfxPoolService;
         _audioService = audioService;
+        _screenFlashService = screenFlashService;
 
         _poolRoot = new GameObject("[SYSTEM]_FruitPool").transform;
     }
@@ -38,7 +41,7 @@ public class FruitPoolService
         fruit.transform.position = position;
         
         // Truyền chính cái 'pool' quản lý nó vào hàm Setup để nó biết đường 'về nhà'
-        fruit.Setup(data, pool, _gameModel, _comboService, _vfxPoolService, _audioService);
+        fruit.Setup(data, pool, _gameModel, _comboService, _vfxPoolService, _audioService, _screenFlashService);
 
         return fruit;
     }
