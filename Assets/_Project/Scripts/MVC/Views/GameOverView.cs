@@ -12,6 +12,7 @@ public class GameOverView : MonoBehaviour
     [SerializeField] private TextMeshProUGUI currentScoreText;
     [SerializeField] private TextMeshProUGUI highScoreText;
     [SerializeField] private Button retryButton; // Kéo thả cục Button Retry vào đây
+    [SerializeField] private DwellButton dwellRetryButton; // Kéo thả cục Button Main Menu vào đây
 
     [Inject] private readonly GameModel _gameModel;
 
@@ -20,6 +21,11 @@ public class GameOverView : MonoBehaviour
         if (retryButton != null)
         {
             retryButton.onClick.AddListener(OnRetryClicked);
+        }
+
+        if (dwellRetryButton != null)
+        {
+            dwellRetryButton.onDwellClick.AddListener(OnRetryClicked);
         }
     }
 
@@ -51,6 +57,7 @@ public class GameOverView : MonoBehaviour
     {
         // QUAN TRỌNG: Phải xả đông vật lý trước khi load lại Scene
         Time.timeScale = 1f; 
+        dwellRetryButton.ResetButton(); // Reset trạng thái của Dwell Button để tránh bị kẹt
         _gameModel.StartGame(); // Reset lại trạng thái GameModel về Playing
     }
 

@@ -1,14 +1,20 @@
 import cv2
+import time
 from network import UDPSender
-from detector import HandPinchDetector
+from detector import HandTracker
 
 def main():
     print("🚀 BẮT ĐẦU KHỞI ĐỘNG HỆ THỐNG AI SENSOR...")
     
-    # Khởi tạo các Service (Giống khái niệm DI bên Unity)
     cap = cv2.VideoCapture(0)
-    detector = HandPinchDetector(pinch_threshold=0.05)
+    # Tùy chỉnh độ phân giải camera thấp xuống để tăng FPS nếu máy yếu (VD: 640x480)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+    detector = HandTracker(slash_threshold=1.5)
     sender = UDPSender(ip="127.0.0.1", port=5005)
+
+    pTime = 0 # Thời gian frame trước
 
     print("✅ Hệ thống sẵn sàng! Nhấn 'q' trên cửa sổ Camera để thoát.")
 
@@ -18,27 +24,28 @@ def main():
             print("❌ Lỗi: Không thể đọc tín hiệu từ Webcam!")
             break
 
-        # Lật ngược ảnh để soi gương
         img = cv2.flip(img, 1)
 
-        # Xử lý hình ảnh qua AI
+        # Đoạn code cốt lõi
         img, data_string = detector.process_frame(img)
 
-        # Nếu AI trả về dữ liệu (có bàn tay), gửi qua mạng
         if data_string:
             sender.send_data(data_string)
-            # In lên màn hình để dễ Debug
-            cv2.putText(img, f"Sending: {data_string}", (10, 50), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
+            cv2.putText(img, f"Data: {data_string}", (10, 80), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
 
-        # Hiển thị
-        cv2.imshow("Fruit Ninja - AI Hand Tracker", img)
+        # Tính toán và hiển thị FPS
+        cTime = time.time()
+        fps = 1 / (cTime - pTime) if (cTime - pTime) > 0 else 0
+        pTime = cTime
+        cv2.putText(img, f"FPS: {int(fps)}", (10, 40), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 2)
 
-        # Kiểm tra lệnh thoát (Phím Q)
+        cv2.imshow("AI Hand Tracker", img)
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    # Dọn dẹp sạch sẽ khi kết thúc (Graceful Shutdown)
     print("🧹 Đang dọn dẹp hệ thống...")
     cap.release()
     cv2.destroyAllWindows()
@@ -46,6 +53,5 @@ def main():
     sender.close()
     print("👋 Tạm biệt!")
 
-# Chỉ chạy hàm main nếu file này được gọi trực tiếp
 if __name__ == "__main__":
     main()

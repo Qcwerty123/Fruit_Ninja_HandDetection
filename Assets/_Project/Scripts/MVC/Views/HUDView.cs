@@ -12,6 +12,7 @@ public class HUDView : MonoBehaviour
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI livesText;
     [SerializeField] private Button pauseButton;
+    [SerializeField] private DwellButton dwellPauseButton;
 
     [Inject] private readonly GameModel _gameModel;
     
@@ -21,9 +22,15 @@ public class HUDView : MonoBehaviour
     {
         // 1. Tự động gán sự kiện cho nút Pause (nếu chưa kéo tay trong Inspector)
         if (pauseButton == null) pauseButton = GetComponentInChildren<Button>();
+        if (dwellPauseButton == null) dwellPauseButton = GetComponentInChildren<DwellButton>();
         if (pauseButton != null)
         {
             pauseButton.onClick.AddListener(() => _gameModel.TogglePause());
+        }
+
+        if (dwellPauseButton != null)
+        {
+            dwellPauseButton.onDwellClick.AddListener(() => _gameModel.TogglePause());
         }
 
         // 2. Lắng nghe Điểm số: Mỗi khi Score thay đổi, cập nhật Text và chạy hiệu ứng

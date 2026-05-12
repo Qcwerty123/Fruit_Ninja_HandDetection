@@ -8,6 +8,7 @@ public class PauseView : MonoBehaviour
     [Header("UI Elements")]
     [SerializeField] private Transform panelContainer; 
     [SerializeField] private Button resumeButton; // Kéo thả cục Button Resume vào đây
+    [SerializeField] private DwellButton dwellResumeButton; // Kéo thả cục Button Resume vào đây
 
     [Inject] private readonly GameModel _gameModel;
 
@@ -17,6 +18,10 @@ public class PauseView : MonoBehaviour
         if (resumeButton != null)
         {
             resumeButton.onClick.AddListener(() => _gameModel.TogglePause());
+        }
+        if (dwellResumeButton != null)
+        {
+            dwellResumeButton.onDwellClick.AddListener(() => _gameModel.TogglePause());
         }
     }
 

@@ -9,6 +9,9 @@ public class GameSceneInstaller : MonoBehaviour, IInstaller
     [SerializeField] private AudioService audioService;
     [SerializeField] private ScreenFlashService screenFlashService;
 
+    [Header("UDP Receiver (Cho Hand Tracking)")]
+    [SerializeField] private UDPReceiverService udpReceiverService;
+
     public void InstallBindings(ContainerBuilder builder)
     {
         // 1. Khởi tạo & Đăng ký Lõi Dữ liệu (GameModel & GameSettings)
@@ -31,8 +34,8 @@ public class GameSceneInstaller : MonoBehaviour, IInstaller
         IInputService inputService = new ScreenInputService();
         builder.RegisterValue(inputService, new Type [] { typeof(IInputService) });
 
-        // IInputService handTrackingInputService = new HandTrackingInputService(FindObjectOfType<UDPReceiverService>());
-        // builder.RegisterValue(handTrackingInputService, new Type [] { typeof(IInputService) });
+        IInputService handTrackingInputService = new HandTrackingInputService(udpReceiverService);
+        builder.RegisterValue(handTrackingInputService, new Type [] { typeof(IInputService) });
 
         // 5. Khởi tạo & Đăng ký Hệ thống Âm thanh (Audio)
         builder.RegisterValue(audioService, new Type [] { typeof(AudioService) });

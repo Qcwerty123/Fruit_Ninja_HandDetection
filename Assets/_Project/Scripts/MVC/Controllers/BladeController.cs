@@ -23,6 +23,14 @@ public class BladeController : MonoBehaviour
     
     // Cờ trạng thái đóng băng lưỡi kiếm
     private bool _isLocked = false; 
+    
+    // Cache Camera để tránh tốn GC khi gọi Camera.main liên tục
+    private Camera _mainCamera;
+
+    private void Awake()
+    {
+        _mainCamera = Camera.main;
+    }
 
     private void Start()
     {
@@ -42,14 +50,9 @@ public class BladeController : MonoBehaviour
 
     private void Update()
     {
-        // if (_inputService is HandTrackingInputService handInput)
-        // {
-        //     handInput.Update();
-        // }
-
         if (_gameModel.State.Value != GameState.Playing) return;
         
-        // 1. Nếu lưỡi kiếm bị khóa (do chém trúng bom), dừng cập nhật vị trí mới
+        // Nếu lưỡi kiếm bị khóa (do chém trúng bom), dừng cập nhật vị trí mới
         if (_isLocked) return;
         
         if (_inputService.IsSwiping())
@@ -64,23 +67,28 @@ public class BladeController : MonoBehaviour
 
     private void ContinueSlice()
     {
-        Vector2 currentPosition = _inputService.GetCurrentPosition();
+        // Lấy tọa độ Pixel trên màn hình (Từ Hand Tracking hoặc Chuột)
+        Vector2 screenPosition = _inputService.GetCurrentPosition();
+
+        // 2. QUY ĐỔI SANG TỌA ĐỘ THẾ GIỚI 2D (World Space)
+        Vector3 worldPos3D = _mainCamera.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, 0f));
+        Vector2 currentWorldPosition = new Vector2(worldPos3D.x, worldPos3D.y);
 
         if (!_isSlicing)
         {
             _isSlicing = true;
-            view.UpdatePosition(currentPosition);
+            view.UpdatePosition(currentWorldPosition);
             view.StartSlicing();
-            _previousPosition = currentPosition;
+            _previousPosition = currentWorldPosition;
             return;
         }
 
-        view.UpdatePosition(currentPosition);
+        view.UpdatePosition(currentWorldPosition);
 
-        float distance = Vector2.Distance(currentPosition, _previousPosition);
+        float distance = Vector2.Distance(currentWorldPosition, _previousPosition);
         if (distance > minSliceVelocity)
         {
-            int hitCount = Physics2D.LinecastNonAlloc(_previousPosition, currentPosition, _hitsBuffer, fruitLayer);
+            int hitCount = Physics2D.LinecastNonAlloc(_previousPosition, currentWorldPosition, _hitsBuffer, fruitLayer);
             
             for (int i = 0; i < hitCount; i++)
             {
@@ -90,21 +98,14 @@ public class BladeController : MonoBehaviour
                 {
                     hitCollider.enabled = false; 
 
-                    // Debug.Log($"<color=green>CHẶT ĐỨT: {hitCollider.gameObject.name}</color>");
-                    
                     if (hitCollider.TryGetComponent(out FruitController fruit))
                     {
-                        Vector2 cutDirection = currentPosition - _previousPosition;
+                        Vector2 cutDirection = currentWorldPosition - _previousPosition;
                         
-                        // 2. TÁCH BIỆT LOGIC BOM VÀ TRÁI CÂY TẠI ĐÂY
                         if (fruit.IsBomb())
                         {
-                            LockBlade(); // Đóng băng Trail ngay tại tọa độ va chạm
-                            fruit.Slice(cutDirection).Forget(); // Gọi Forget() chuẩn convention UniTask
-                            
-                            // QUAN TRỌNG: Ngắt vòng lặp ngay lập tức!
-                            // Nếu quét 1 đường trúng quả Bom và 1 quả Táo phía sau,
-                            // game sẽ chỉ ghi nhận nổ Bom, quả Táo được an toàn.
+                            LockBlade(); 
+                            fruit.Slice(cutDirection).Forget(); 
                             break; 
                         }
                         else
@@ -119,7 +120,7 @@ public class BladeController : MonoBehaviour
         // Chỉ cập nhật previousPosition nếu không bị khóa
         if (!_isLocked)
         {
-            _previousPosition = currentPosition;
+            _previousPosition = currentWorldPosition;
         }
     }
 
@@ -129,19 +130,11 @@ public class BladeController : MonoBehaviour
         view.StopSlicing();
     }
 
-    /// <summary>
-    /// Đóng băng cập nhật tọa độ của lưỡi kiếm
-    /// </summary>
     public void LockBlade()
     {
         _isLocked = true;
-        // Tùy chọn: Bạn có thể gọi view.StopSlicing() ở đây nếu muốn vệt kiếm 
-        // mờ dần ngay lúc trúng bom thay vì đóng băng trên màn hình.
     }
 
-    /// <summary>
-    /// Gọi hàm này khi bắt đầu ván mới (Vd: Nhấn nút Chơi Lại)
-    /// </summary>
     public void UnlockBlade()
     {
         _isLocked = false;
