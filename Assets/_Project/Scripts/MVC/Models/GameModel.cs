@@ -10,6 +10,17 @@ public enum GameState
     GameOver
 }
 
+public enum GameMode
+{
+    Classic,    // Chém kiểu cũ (Prefab Swap)
+    Dynamic     // Chém toán học (Polygon Clipping)
+}
+
+public enum InputMethod
+{
+    Mouse,      // Chém bằng chuột
+    CameraAI    // Chém bằng Hand Tracking
+}
 public class GameModel
 {
     // Reactive Properties để UI (UIManager, HUDView) tự động lắng nghe
@@ -19,6 +30,15 @@ public class GameModel
     // TRẠNG THÁI DUY NHẤT (Single Source of Truth)
     public ReactiveProperty<GameState> State { get; } = new(GameState.MainMenu);
 
+    // Chế độ chơi (Classic hay Dynamic)
+    public ReactiveProperty<GameMode> CurrentMode { get; } = new(GameMode.Classic);
+
+    // Kiểu chém (Mouse hay CameraAI)
+    public ReactiveProperty<InputMethod> CurrentInput { get; } = new(InputMethod.Mouse);
+
+    // Biến quản lý trạng thái Bật/Tắt của bảng Settings
+    public ReactiveProperty<bool> IsSettingsOpen { get; } = new(false);
+    public ReactiveProperty<bool> IsSpawning { get; } = new(false);
     private readonly int _maxLives;
 
     public GameModel(int startingLives)
@@ -36,6 +56,7 @@ public class GameModel
         Score.Value = 0;
         Lives.Value = _maxLives;
         ChangeState(GameState.Playing);
+        IsSpawning.Value = false;
     }
 
     public void AddScore(int amount)

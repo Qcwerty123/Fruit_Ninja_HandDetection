@@ -65,6 +65,35 @@ public class VFXPoolService
         }
     }
 
+    // 3. TÍNH NĂNG MỚI: Spawn hạt, ĐỔI MÀU và XOAY THEO HƯỚNG CHÉM (Dành cho Splatter)
+    public void SpawnParticleWithColorAndRotation(GameObject particlePrefab, Vector3 position, Color color, Quaternion rotation)
+    {
+        if (particlePrefab == null) return;
+
+        if (!_pools.TryGetValue(particlePrefab, out var pool))
+        {
+            pool = CreatePool(particlePrefab);
+            _pools[particlePrefab] = pool;
+        }
+
+        GameObject instance = pool.Get();
+        // Set cả vị trí lẫn góc xoay
+        instance.transform.SetPositionAndRotation(position, rotation);
+
+        if (instance.TryGetComponent<ParticleSystem>(out var ps))
+        {
+            var main = ps.main;
+            main.startColor = color;
+            ps.Play();
+
+            AutoDespawnAsync(instance, particlePrefab, main.duration + 0.1f).Forget();
+        }
+        else
+        {
+            AutoDespawnAsync(instance, particlePrefab, 1f).Forget();
+        }
+    }
+
     // Hàm phụ trợ để code gọn hơn
     private IObjectPool<GameObject> CreatePool(GameObject prefab)
     {

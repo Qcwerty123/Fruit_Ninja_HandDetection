@@ -29,13 +29,19 @@ public class GameSceneInstaller : MonoBehaviour, IInstaller
         VFXPoolService vfxPoolService = new VFXPoolService();
         builder.RegisterValue(vfxPoolService, new Type [] { typeof(VFXPoolService) });
 
-        // 4. Khởi tạo & Đăng ký Hệ thống Nhập liệu (Input)
-        // Lưu ý: Đăng ký dưới dạng Interface (IInputService) để các class khác dễ dàng Inject
-        IInputService inputService = new ScreenInputService();
-        builder.RegisterValue(inputService, new Type [] { typeof(IInputService) });
+        // 3.5. Khởi tạo & Đăng ký Kho mảnh vỡ (Fragment Pool) cho Dynamic Fruit
+        FragmentPoolService fragmentPoolService = new FragmentPoolService();
+        builder.RegisterValue(fragmentPoolService, new Type [] { typeof(FragmentPoolService) });
 
-        IInputService handTrackingInputService = new HandTrackingInputService(udpReceiverService);
-        builder.RegisterValue(handTrackingInputService, new Type [] { typeof(IInputService) });
+        // 4. Khởi tạo & Đăng ký Hệ thống Nhập liệu (Input)
+        ScreenInputService screenInputService = new ScreenInputService();
+        builder.RegisterValue(screenInputService, new Type [] { typeof(ScreenInputService) });
+
+        HandTrackingInputService handTrackingInputService = new HandTrackingInputService(udpReceiverService);
+        builder.RegisterValue(handTrackingInputService, new Type [] { typeof(HandTrackingInputService) });
+
+        IInputService inputRouter = new InputRouter(gameModel, screenInputService, handTrackingInputService);
+        builder.RegisterValue(inputRouter, new Type [] { typeof(IInputService) });
 
         // 5. Khởi tạo & Đăng ký Hệ thống Âm thanh (Audio)
         builder.RegisterValue(audioService, new Type [] { typeof(AudioService) });
@@ -50,7 +56,8 @@ public class GameSceneInstaller : MonoBehaviour, IInstaller
             comboService, 
             vfxPoolService,
             audioService,
-            screenFlashService
+            screenFlashService,
+            fragmentPoolService
         );
         builder.RegisterValue(fruitPoolService);
 

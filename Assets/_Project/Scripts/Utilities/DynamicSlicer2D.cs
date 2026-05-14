@@ -1,21 +1,20 @@
 using UnityEngine;
 using System.Collections.Generic;
-using UnityEngine.Rendering;
 
 public static class DynamicSlicer2D
 {
     private static Sprite _squareMask;
+    
+    // TỐI ƯU RAM: Tái sử dụng List tĩnh (Zero-Allocation) để không xả rác mỗi lần chém
+    private static readonly List<Vector2> _leftPoints = new List<Vector2>(32);
+    private static readonly List<Vector2> _rightPoints = new List<Vector2>(32);
 
-    public static GameObject[] Slice(GameObject target, Vector2 cutStart, Vector2 cutEnd, Material sliceMaterial)
+    public static void Slice(GameObject target, Vector2 cutStart, Vector2 cutEnd, Material sliceMaterial, PooledDynamicFragment leftHalf, PooledDynamicFragment rightHalf)
     {
         SpriteRenderer sr = target.GetComponent<SpriteRenderer>();
         PolygonCollider2D originalCol = target.GetComponent<PolygonCollider2D>();
         
-        if (sr == null || sr.sprite == null || originalCol == null) 
-        {
-            Debug.LogWarning("<color=red>[Slicer]</color> Trái cây cần có PolygonCollider2D để cắt!");
-            return null;
-        }
+        if (sr == null || sr.sprite == null || originalCol == null) return;
 
         Vector2 cutDir = (cutEnd - cutStart).normalized;
         float angle = Mathf.Atan2(cutDir.y, cutDir.x) * Mathf.Rad2Deg;
@@ -23,33 +22,38 @@ public static class DynamicSlicer2D
         Rigidbody2D rb = target.GetComponent<Rigidbody2D>();
         Vector2 originalVelocity = rb != null ? rb.velocity : Vector2.zero;
 
-        // 1. Tạo 2 mảnh ghép (Xử lý phần Nhìn - Visual)
-        GameObject leftHalf = CreateHalf("LeftPiece", target, cutStart, angle, true);
-        GameObject rightHalf = CreateHalf("RightPiece", target, cutStart, angle, false);
+        leftHalf.ResetState();
+        rightHalf.ResetState();
 
-        // 2. Chuyển đổi tọa độ nhát chém sang Không gian cục bộ của trái cây
+        // --- SỬA LỖI LỆCH MASK (QUAN TRỌNG) ---
+        // Không dùng cutStart. Ta phải "chiếu" tâm của trái cây vuông góc xuống đường cắt 
+        // để đảm bảo Mask luôn luôn nằm CHÍNH GIỮA trái cây, bất kể đường chém dài bao nhiêu.
+        Vector2 fruitPos = target.transform.position;
+        Vector2 exactMaskPos = cutStart + Vector2.Dot(fruitPos - cutStart, cutDir) * cutDir;
+
+        // 1. Cấu hình hình ảnh (Truyền exactMaskPos vào)
+        ConfigVisual(leftHalf, target, exactMaskPos, angle, true, sr);
+        ConfigVisual(rightHalf, target, exactMaskPos, angle, false, sr);
+
+        // 2. Chia đôi khung Collider
         Vector2 localStart = target.transform.InverseTransformPoint(cutStart);
         Vector2 localEnd = target.transform.InverseTransformPoint(cutEnd);
         Vector2 localDir = (localEnd - localStart).normalized;
 
-        // 3. Xử lý phần Chạm (Physics) - Chia đôi khung Collider
-        SplitCollider(originalCol, leftHalf, rightHalf, localStart, localDir);
+        SplitCollider(originalCol, leftHalf.polygonCollider, rightHalf.polygonCollider, localStart, localDir);
 
-        // 4. Bật Vật lý để chúng văng ra (Tắt IgnoreCollision vì giờ khung va chạm đã hoàn hảo)
-        AddPhysics(leftHalf, originalVelocity, cutDir, true);
-        AddPhysics(rightHalf, originalVelocity, cutDir, false);
-
-        return new GameObject[] { leftHalf, rightHalf };
+        // 3. Bật Vật lý
+        ConfigPhysics(leftHalf.rigidBody, originalVelocity, cutDir, true);
+        ConfigPhysics(rightHalf.rigidBody, originalVelocity, cutDir, false);
     }
 
-    // ==========================================
-    // LOGIC TOÁN HỌC: CẮT KHUNG VA CHẠM (COLLIDER)
-    // ==========================================
-    private static void SplitCollider(PolygonCollider2D originalCol, GameObject leftHalf, GameObject rightHalf, Vector2 localCutStart, Vector2 localCutDir)
+    private static void SplitCollider(PolygonCollider2D originalCol, PolygonCollider2D leftCol, PolygonCollider2D rightCol, Vector2 localCutStart, Vector2 localCutDir)
     {
+        // Dọn dẹp List tĩnh để xài lại
+        _leftPoints.Clear();
+        _rightPoints.Clear();
+
         Vector2[] points = originalCol.GetPath(0);
-        List<Vector2> leftPoints = new List<Vector2>();
-        List<Vector2> rightPoints = new List<Vector2>();
 
         for (int i = 0; i < points.Length; i++)
         {
@@ -59,109 +63,86 @@ public static class DynamicSlicer2D
             bool currentIsLeft = IsLeftSide(localCutStart, localCutDir, currentPoint);
             bool nextIsLeft = IsLeftSide(localCutStart, localCutDir, nextPoint);
 
-            if (currentIsLeft) leftPoints.Add(currentPoint);
-            else rightPoints.Add(currentPoint);
+            if (currentIsLeft) _leftPoints.Add(currentPoint);
+            else _rightPoints.Add(currentPoint);
 
             if (currentIsLeft != nextIsLeft)
             {
                 Vector2 intersection = GetIntersection(currentPoint, nextPoint, localCutStart, localCutStart + localCutDir);
-                leftPoints.Add(intersection);
-                rightPoints.Add(intersection);
+                _leftPoints.Add(intersection);
+                _rightPoints.Add(intersection);
             }
         }
 
-        // [ĐÃ SỬA] Gán lại chuẩn xác Offset từ trái cây gốc sang mảnh vỡ
-        if (leftPoints.Count > 2)
+        if (_leftPoints.Count > 2)
         {
-            PolygonCollider2D col = leftHalf.AddComponent<PolygonCollider2D>();
-            col.SetPath(0, leftPoints.ToArray());
-            col.offset = originalCol.offset; 
+            leftCol.SetPath(0, _leftPoints.ToArray());
+            leftCol.offset = originalCol.offset; 
         }
-        if (rightPoints.Count > 2)
+        if (_rightPoints.Count > 2)
         {
-            PolygonCollider2D col = rightHalf.AddComponent<PolygonCollider2D>();
-            col.SetPath(0, rightPoints.ToArray());
-            col.offset = originalCol.offset;
+            rightCol.SetPath(0, _rightPoints.ToArray());
+            rightCol.offset = originalCol.offset;
         }
     }
 
-    // Tính toán Tích có hướng (Cross Product) để phân loại Trái/Phải
-    private static bool IsLeftSide(Vector2 linePoint, Vector2 lineDir, Vector2 point)
+    private static void ConfigVisual(PooledDynamicFragment half, GameObject original, Vector2 maskPosition, float cutAngle, bool isLeft, SpriteRenderer originalSr)
     {
-        return (lineDir.x * (point.y - linePoint.y) - lineDir.y * (point.x - linePoint.x)) > 0;
-    }
-
-    // Thuật toán tìm điểm giao nhau của 2 đoạn thẳng
-    private static Vector2 GetIntersection(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4)
-    {
-        float d = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x);
-        if (d == 0) return p1; // Tránh lỗi chia cho 0 nếu song song
-        
-        float t = ((p1.x - p3.x) * (p3.y - p4.y) - (p1.y - p3.y) * (p3.x - p4.x)) / d;
-        return new Vector2(p1.x + t * (p2.x - p1.x), p1.y + t * (p2.y - p1.y));
-    }
-
-    // ==========================================
-    // LOGIC HIỂN THỊ VÀ VẬT LÝ
-    // ==========================================
-    private static GameObject CreateHalf(string name, GameObject original, Vector2 cutStart, float cutAngle, bool isLeft)
-    {
-        GameObject half = new GameObject(name);
         half.transform.position = original.transform.position;
         half.transform.rotation = original.transform.rotation;
         half.transform.localScale = original.transform.localScale;
 
-        half.AddComponent<SortingGroup>();
+        half.spriteRenderer.sprite = originalSr.sprite;
+        half.spriteRenderer.material = originalSr.material;
+        half.spriteRenderer.sortingLayerID = originalSr.sortingLayerID;
+        half.spriteRenderer.sortingOrder = originalSr.sortingOrder;
+        half.spriteRenderer.maskInteraction = SpriteMaskInteraction.VisibleInsideMask;
 
-        SpriteRenderer originalSr = original.GetComponent<SpriteRenderer>();
-        SpriteRenderer sr = half.AddComponent<SpriteRenderer>();
-        sr.sprite = originalSr.sprite;
-        sr.material = originalSr.material;
-        sr.sortingLayerID = originalSr.sortingLayerID;
-        sr.sortingOrder = originalSr.sortingOrder;
-        sr.maskInteraction = SpriteMaskInteraction.VisibleInsideMask;
-
-        GameObject maskObj = new GameObject("Mask");
-        maskObj.transform.SetParent(half.transform);
-        maskObj.transform.position = cutStart; 
-        
-        // [ĐÃ SỬA] Công thức xoay chuẩn xác: 
-        // Bên trái thì xoay đúng bằng góc chém. Bên phải thì xoay ngược lại 180 độ.
+        half.maskTransform.position = maskPosition; 
         float maskAngle = isLeft ? cutAngle : cutAngle + 180f;
-        maskObj.transform.rotation = Quaternion.Euler(0, 0, maskAngle);
+        half.maskTransform.rotation = Quaternion.Euler(0, 0, maskAngle);
         
-        // Phóng to mặt nạ lên mức tối đa để không bao giờ bị hụt khi chém từ xa
-        maskObj.transform.localScale = new Vector3(10000f, 10000f, 1f);
+        // --- SỬA LỖI SCALE MASK ---
+        // Triệt tiêu ảnh hưởng của scale từ Object cha để Mask không bị bóp méo
+        float inverseScaleX = 1f / half.transform.localScale.x;
+        float inverseScaleY = 1f / half.transform.localScale.y;
 
-        SpriteMask mask = maskObj.AddComponent<SpriteMask>();
-        mask.sprite = GetSquareMask();
+        float fruitMaxSize = Mathf.Max(originalSr.bounds.size.x, originalSr.bounds.size.y);
+        float dynamicMaskSize = fruitMaxSize * 3f; // Tăng hệ số lên x3 cho an toàn tuyệt đối
+        
+        half.maskTransform.localScale = new Vector3(dynamicMaskSize * inverseScaleX, dynamicMaskSize * inverseScaleY, 1f);
 
-        return half;
+        half.spriteMask.sprite = GetSquareMask();
     }
 
-    private static void AddPhysics(GameObject half, Vector2 originalVelocity, Vector2 cutDir, bool isLeft)
+    private static void ConfigPhysics(Rigidbody2D rb, Vector2 originalVelocity, Vector2 cutDir, bool isLeft)
     {
-        // Collider đã được thêm ở hàm SplitCollider, giờ chỉ thêm Rigidbody
-        Rigidbody2D rb = half.AddComponent<Rigidbody2D>();
         rb.velocity = originalVelocity;
-
-        // Trọng lượng thay đổi tùy mảnh to hay nhỏ (Tùy chọn)
         rb.mass = isLeft ? 0.8f : 1.2f;
 
-        Vector2 pushDir = isLeft ? Vector2.Perpendicular(cutDir) : -Vector2.Perpendicular(cutDir);
+        Vector2 pushDir = isLeft ? new Vector2(-cutDir.y, cutDir.x) : new Vector2(cutDir.y, -cutDir.x);
         rb.AddForce(pushDir * 4f, ForceMode2D.Impulse);
         rb.AddTorque(Random.Range(-150f, 150f)); 
+    }
+
+    private static bool IsLeftSide(Vector2 linePoint, Vector2 lineDir, Vector2 point) => (lineDir.x * (point.y - linePoint.y) - lineDir.y * (point.x - linePoint.x)) > 0;
+
+    private static Vector2 GetIntersection(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4)
+    {
+        float d = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x);
+        if (d == 0) return p1; 
+        float t = ((p1.x - p3.x) * (p3.y - p4.y) - (p1.y - p3.y) * (p3.x - p4.x)) / d;
+        return new Vector2(p1.x + t * (p2.x - p1.x), p1.y + t * (p2.y - p1.y));
     }
 
     private static Sprite GetSquareMask()
     {
         if (_squareMask == null)
         {
-            Texture2D tex = new Texture2D(2, 2);
-            Color[] colors = new Color[] { Color.white, Color.white, Color.white, Color.white };
-            tex.SetPixels(colors);
+            Texture2D tex = new Texture2D(1, 1);
+            tex.SetPixel(0, 0, Color.white);
             tex.Apply();
-            _squareMask = Sprite.Create(tex, new Rect(0, 0, 2, 2), new Vector2(0.5f, 0f), 100f);
+            _squareMask = Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0f), 1f);
         }
         return _squareMask;
     }

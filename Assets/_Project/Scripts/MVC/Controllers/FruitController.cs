@@ -1,29 +1,39 @@
 using UnityEngine;
 using UnityEngine.Pool;
-using Cysharp.Threading.Tasks; // Đảm bảo đã cài UniTask
+using Cysharp.Threading.Tasks;
 
-[RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
+[RequireComponent(typeof(Rigidbody2D))]
 public class FruitController : MonoBehaviour
 {
-    private Rigidbody2D _rigidbody;
-    private Collider2D _collider;
+    [Header("Audio (Âm thanh cục bộ)")]
+    [Tooltip("Kéo AudioSource chứa tiếng xì xì của Bom vào đây (Nếu là trái cây thường thì để trống)")]
+    [SerializeField] private AudioSource _loopingAudioSource;
 
-    private FruitData _data;
-    private IObjectPool<FruitController> _pool;
-    private GameModel _gameModel;
-    private ComboService _comboService;
-    private VFXPoolService _vfxPoolService;
-    private AudioService _audioService;
-    private ScreenFlashService _screenFlashService;
+    protected Rigidbody2D _rigidbody;
+    protected Collider2D _collider; 
 
-    private void Awake()
+    protected FruitData _data;
+    protected IObjectPool<FruitController> _pool;
+    protected GameModel _gameModel;
+    protected ComboService _comboService;
+    protected VFXPoolService _vfxPoolService;
+    protected FragmentPoolService _fragmentPoolService;
+    protected AudioService _audioService;
+    protected ScreenFlashService _screenFlashService;
+
+    // [CẬP NHẬT] Thêm biến cờ để ngăn chém 2 lần vào cùng 1 quả
+    protected bool _isSliced = false; 
+
+    protected virtual void Awake()
     {
         _rigidbody = GetComponent<Rigidbody2D>();
         _collider = GetComponent<Collider2D>();
     }
 
     public void Setup(FruitData data, IObjectPool<FruitController> pool, GameModel gameModel, 
-                     ComboService comboService, VFXPoolService vfxPoolService, AudioService audioService, ScreenFlashService screenFlashService)
+                      ComboService comboService, VFXPoolService vfxPoolService, 
+                      AudioService audioService, ScreenFlashService screenFlashService,
+                      FragmentPoolService fragmentPoolService)
     {
         _data = data;
         _pool = pool;
@@ -32,10 +42,18 @@ public class FruitController : MonoBehaviour
         _vfxPoolService = vfxPoolService;
         _audioService = audioService;
         _screenFlashService = screenFlashService;
+        _fragmentPoolService = fragmentPoolService; 
 
+        // Reset trạng thái vật lý và cờ chém khi lấy từ Pool ra
         _rigidbody.velocity = Vector2.zero;
         _rigidbody.angularVelocity = 0f;
         _collider.enabled = true; 
+        _isSliced = false; 
+
+        if (_loopingAudioSource != null && _data.isBomb) 
+        {
+            _loopingAudioSource.Play();
+        }
     }
 
     public void Launch(Vector2 force, float torque)
@@ -44,27 +62,57 @@ public class FruitController : MonoBehaviour
         _rigidbody.AddTorque(torque, ForceMode2D.Impulse);
     }
 
-    public async UniTaskVoid Slice(Vector2 cutDirection)
+    public async UniTaskVoid Slice(Vector2 cutDirection, Vector2 cutStart, Vector2 cutEnd)
     {
+        // Chặn ngay nếu quả này đã bị chém rồi (Tránh lỗi văng rác Pool)
+        if (_isSliced) return;
+        _isSliced = true;
+
         _collider.enabled = false;
 
-        // 1. Kích hoạt hiệu ứng ngay lập tức (Rung, Khựng, m thanh)
-        // Chúng ta không await ở đây vì muốn các hiệu ứng này chạy song song
+        // Tắt tiếng xì xì ngay lập tức nếu là Bom
+        if (_loopingAudioSource != null && _loopingAudioSource.isPlaying)
+        {
+            _loopingAudioSource.Stop();
+        }
+        
         ApplyJuiceEffects();
 
-        if (_audioService != null && _data.sliceSound != null)
+        // =========================================================
+        // [CẬP NHẬT] HỆ THỐNG AUDIO LAYERING (TRỘN ÂM THANH)
+        // =========================================================
+        if (_data != null && _audioService != null)
         {
-            _audioService.PlaySFX(_data.sliceSound, volume: 1f);
+            // 1. Lớp va đập (Khô - Bắt buộc)
+            if (_data.impactSounds != null && _data.impactSounds.Length > 0)
+            {
+                AudioClip impact = _data.impactSounds[Random.Range(0, _data.impactSounds.Length)];
+                _audioService.PlaySFX(impact, volume: 1f, randomizePitch: true);
+            }
+
+            // 2. Lớp xịt nước (Ướt - Nếu có)
+            if (_data.splatterSounds != null && _data.splatterSounds.Length > 0)
+            {
+                AudioClip splatter = _data.splatterSounds[Random.Range(0, _data.splatterSounds.Length)];
+                _audioService.PlaySFX(splatter, volume: 0.85f, randomizePitch: true);
+            }
+
+            // 3. Lớp chi tiết (Nhỏ giọt - Nếu có)
+            if (_data.detailSounds != null && _data.detailSounds.Length > 0)
+            {
+                AudioClip detail = _data.detailSounds[Random.Range(0, _data.detailSounds.Length)];
+                _audioService.PlaySFX(detail, volume: 0.6f, randomizePitch: true);
+            }
         }
+        // =========================================================
 
         if (_data.isBomb)
         {
-            // Đợi vụ nổ diễn ra xong rồi mới báo GameOver
             await HandleBombLogic();
         }
         else 
         {
-            HandleFruitLogic(cutDirection);
+            HandleFruitLogic(cutDirection, cutStart, cutEnd);
         }
 
         Despawn();
@@ -74,70 +122,94 @@ public class FruitController : MonoBehaviour
     {
         if (_data.isBomb)
         {
-            // Hiệu ứng cực mạnh cho Bom
             GameJuice.HitStop(0.15f).Forget();
             GameJuice.ShakeCamera(Camera.main.transform, 0.5f, 0.4f).Forget();
-            GameJuice.Vibrate(); // Rung điện thoại
+            GameJuice.Vibrate(); 
         }
         else
         {
-            // Hiệu ứng nhẹ nhàng cho Trái cây
             GameJuice.HitStop(0.04f).Forget();
-            //GameJuice.ShakeCamera(Camera.main.transform, 0.08f, 0.12f).Forget();
         }
     }
 
     private async UniTask HandleBombLogic()
     {
-        // 1. Phun VFX nổ
-        if (_data.slicedPrefab != null && _vfxPoolService != null)
-        {
-            _vfxPoolService.Spawn(_data.slicedPrefab, transform.position, Quaternion.identity);
-        }
-
-        // 2. GỌI HIỆU ỨNG CHỚP TRẮNG TỪ TỪ (Mất 0.6s để trắng xoá toàn màn hình)
         if (_screenFlashService != null)
         {
             _screenFlashService.Flashbang(0.6f, 0.4f).Forget();
         }
 
-        // 3. Khoảnh khắc "Nín thở" chờ màn hình trắng hẳn
         await UniTask.WaitForSeconds(0.6f, ignoreTimeScale: true);
-
-        // 4. Lúc này màn hình đã trắng xoá, hiện UI Game Over lên sẽ cực kỳ mượt!
         _gameModel?.TriggerGameOver();
     }
 
-    private void HandleFruitLogic(Vector2 cutDirection)
+    // private void HandleFruitLogic(Vector2 cutDirection, Vector2 cutStart, Vector2 cutEnd)
+    // {
+    //     _gameModel?.AddScore(_data.scoreValue);
+    //     _comboService?.RecordSlice(transform.position);
+
+    //     SpawnSlicedPieces(cutDirection, cutStart, cutEnd);
+
+    //     if (_vfxPoolService != null)
+    //     {
+    //         if (_data.specialJuiceParticle != null)
+    //         {
+    //             _vfxPoolService.Spawn(_data.specialJuiceParticle, transform.position, Quaternion.identity);
+    //         }
+    //         else if (_data.baseJuiceParticle != null)
+    //         {
+    //             _vfxPoolService.SpawnParticleWithColor(_data.baseJuiceParticle, transform.position, _data.splashColor);
+    //         }
+    //     }
+    // }
+
+    private void HandleFruitLogic(Vector2 cutDirection, Vector2 cutStart, Vector2 cutEnd)
     {
         _gameModel?.AddScore(_data.scoreValue);
         _comboService?.RecordSlice(transform.position);
 
-        // 1. Sinh Mảnh vỡ với lực văng vuông góc
-        if (_data.slicedPrefab != null && _vfxPoolService != null)
-        {
-            GameObject slicedObj = _vfxPoolService.Spawn(_data.slicedPrefab, transform.position, transform.rotation);
-            Vector2 perpendicularDir = new Vector2(-cutDirection.y, cutDirection.x).normalized;
-            
-            if (slicedObj.TryGetComponent(out PooledSlicedFruit pooledVfx))
-            {
-                // Truyền thêm vận tốc cũ để mảnh vỡ bay tự nhiên hơn
-                pooledVfx.ApplySliceForce(perpendicularDir, 4f);
-            }
-        }
+        SpawnSlicedPieces(cutDirection, cutStart, cutEnd);
 
-        // 2. Sinh Nước ép (Splash)
-        if (_vfxPoolService != null)
+        // [CẬP NHẬT] Gọi hệ thống VFX phân lớp và truyền hướng chém vào
+        SpawnLayeredJuiceVFX(cutDirection); 
+    }
+
+    // ==========================================
+    // TẠO VFX PHÂN LỚP THEO HƯỚNG CHÉM (CẬP NHẬT)
+    // ==========================================
+    private void SpawnLayeredJuiceVFX(Vector2 cutDirection)
+    {
+        if (_vfxPoolService == null || _data == null) return;
+
+        // Tính toán góc của nhát chém
+        float cutAngle = Mathf.Atan2(cutDirection.y, cutDirection.x) * Mathf.Rad2Deg;
+        Quaternion cutRotation = Quaternion.Euler(0, 0, cutAngle);
+
+        if (!_data.isBomb)
         {
-            if (_data.specialJuiceParticle != null)
+            // 1. Lớp Impact (ĐÃ SỬA: Ép xoay theo hướng chém)
+            if (_data.impactVFX != null)
             {
-                _vfxPoolService.Spawn(_data.specialJuiceParticle, transform.position, Quaternion.identity);
+                _vfxPoolService.SpawnParticleWithColorAndRotation(_data.impactVFX, transform.position, _data.splashColor, cutRotation);
             }
-            else if (_data.baseJuiceParticle != null)
+
+            // 2. Lớp Splatter (Tia nước xoay theo hướng chém)
+            if (_data.splatterVFX != null)
             {
-                _vfxPoolService.SpawnParticleWithColor(_data.baseJuiceParticle, transform.position, _data.splashColor);
+                _vfxPoolService.SpawnParticleWithColorAndRotation(_data.splatterVFX, transform.position, _data.splashColor, cutRotation);
+            }
+
+            // 3. Lớp Pulp (Rơi tự do hoặc dính tường, tỏa tròn đều nên không cần xoay)
+            if (_data.pulpVFX != null)
+            {
+                _vfxPoolService.SpawnParticleWithColor(_data.pulpVFX, transform.position, _data.splashColor);
             }
         }
+    }
+
+    protected virtual void SpawnSlicedPieces(Vector2 cutDirection, Vector2 cutStart, Vector2 cutEnd)
+    {
+        // Lớp cha không làm gì cả
     }
 
     public void Despawn()
@@ -148,12 +220,5 @@ public class FruitController : MonoBehaviour
         }
     }
 
-    public bool IsBomb()
-    {
-        if(_data != null)
-        {
-            return _data.isBomb;
-        }
-        return false;
-    }
+    public bool IsBomb() => _data != null && _data.isBomb;
 }

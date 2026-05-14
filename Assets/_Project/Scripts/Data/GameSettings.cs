@@ -5,34 +5,37 @@ using System.Collections.Generic;
 public class GameSettings : ScriptableObject
 {
     [Header("Gameplay Rules")]
-    [Tooltip("Số mạng tối đa của người chơi khi bắt đầu game")]
-    [SerializeField] private int _startingLives = 3;
+    [SerializeField] private int _startingLives = 10;
 
-    [Header("Global Content")]
-    [Tooltip("Danh sách toàn bộ trái cây và bom có thể xuất hiện trong game")]
-    [SerializeField] private List<FruitData> _availableFruits = new List<FruitData>();
+    [Header("Fruit Libraries")]
+    [Tooltip("Danh sách trái cây dùng cho chế độ Classic (Máy yếu)")]
+    [SerializeField] private List<FruitData> _classicFruits = new List<FruitData>();
+    
+    [Tooltip("Danh sách trái cây dùng cho chế độ Dynamic (Toán học)")]
+    [SerializeField] private List<FruitData> _dynamicFruits = new List<FruitData>();
 
-    [Header("Spawn Settings (Độ khó)")]
+    [Header("Spawn Settings")]
     [SerializeField] private float _minDelay = 0.4f;
     [SerializeField] private float _maxDelay = 1.2f;
-
-    [Header("Spawn Rates")]
     [Range(0f, 1f)] 
-    [Tooltip("Tỷ lệ ra Bom: 0 = Không bao giờ, 1 = 100% ra Bom, 0.15 = 15%")]
-    [SerializeField] private float bombSpawnChance = 0.15f; // Mặc định 15%
+    [SerializeField] private float bombSpawnChance = 0.15f; 
 
-    [Header("Launch Physics (Vật lý ném)")]
+    [Header("Launch Physics")]
     [SerializeField] private float _minForce = 13f;
     [SerializeField] private float _maxForce = 17f;
     [SerializeField] private float _minTorque = -20f;
     [SerializeField] private float _maxTorque = 20f;
     [SerializeField] private float _maxAngle = 15f;
 
-    // --- PUBLIC PROPERTIES (Read-only) ---
+    // --- PUBLIC PROPERTIES ---
     public int StartingLives => _startingLives;
-    public IReadOnlyList<FruitData> AvailableFruits => _availableFruits;
 
-    // Properties cho Spawner
+    // Hàm thông minh: Tự động trả về danh sách quả dựa trên Mode đang chơi
+    public IReadOnlyList<FruitData> GetAvailableFruits(GameMode mode)
+    {
+        return mode == GameMode.Dynamic ? _dynamicFruits : _classicFruits;
+    }
+
     public float MinDelay => _minDelay;
     public float MaxDelay => _maxDelay;
     public float MinForce => _minForce;

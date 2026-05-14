@@ -12,20 +12,29 @@ public class BladeController : MonoBehaviour
     [SerializeField] private LayerMask fruitLayer;
     [SerializeField] private float minSliceVelocity = 0.01f;
 
+    [Header("Audio (Âm thanh)")]
+    [Tooltip("Cho 3-4 file tiếng vút khác nhau vào đây để bốc ngẫu nhiên")]
+    [SerializeField] private AudioClip[] swooshSounds; 
+    
+    [Tooltip("Quãng đường rê chuột tối thiểu để phát ra 1 tiếng vút")]
+    [SerializeField] private float distanceToPlaySwoosh = 2.0f; 
+
+    // Biến cộng dồn quãng đường rê chuột
+    private float _accumulatedDistance = 0f;
+
     [Inject] private readonly IInputService _inputService;
     [Inject] private readonly GameModel _gameModel;
+    [Inject] private readonly AudioService _audioService; // Tiêm AudioService vào đây
 
-    // Bộ đệm tĩnh Zero-Allocation: Tối đa chém trúng 10 object trong 1 frame
     private readonly RaycastHit2D[] _hitsBuffer = new RaycastHit2D[10];
     
     private Vector2 _previousPosition;
     private bool _isSlicing;
-    
-    // Cờ trạng thái đóng băng lưỡi kiếm
     private bool _isLocked = false; 
-    
-    // Cache Camera để tránh tốn GC khi gọi Camera.main liên tục
     private Camera _mainCamera;
+
+    // Biến theo dõi thời gian đếm ngược của âm thanh
+    private float _currentSwooshTimer = 0f;
 
     private void Awake()
     {
@@ -34,15 +43,14 @@ public class BladeController : MonoBehaviour
 
     private void Start()
     {
-        // Đăng ký lắng nghe sự thay đổi của GameState
         if (_gameModel != null && _gameModel.State != null)
         {
             _gameModel.State
-                .Where(state => state == GameState.Playing) // Chỉ quan tâm khi chuyển sang trạng thái Playing
+                .Where(state => state == GameState.Playing) 
                 .Subscribe(_ => 
                 {
-                    UnlockBlade(); // Tự động mở khóa lưỡi kiếm
-                    StopSlice();   // Reset luôn cả vệt kiếm để không bị dính nét từ ván cũ
+                    UnlockBlade(); 
+                    StopSlice();   
                 })
                 .RegisterTo(destroyCancellationToken);
         }
@@ -51,9 +59,9 @@ public class BladeController : MonoBehaviour
     private void Update()
     {
         if (_gameModel.State.Value != GameState.Playing) return;
-        
-        // Nếu lưỡi kiếm bị khóa (do chém trúng bom), dừng cập nhật vị trí mới
         if (_isLocked) return;
+
+        // Đã xóa biến _currentSwooshTimer ở đây vì không dùng đếm giờ nữa
         
         if (_inputService.IsSwiping())
         {
@@ -67,10 +75,8 @@ public class BladeController : MonoBehaviour
 
     private void ContinueSlice()
     {
-        // Lấy tọa độ Pixel trên màn hình (Từ Hand Tracking hoặc Chuột)
         Vector2 screenPosition = _inputService.GetCurrentPosition();
 
-        // 2. QUY ĐỔI SANG TỌA ĐỘ THẾ GIỚI 2D (World Space)
         Vector3 worldPos3D = _mainCamera.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, 0f));
         Vector2 currentWorldPosition = new Vector2(worldPos3D.x, worldPos3D.y);
 
@@ -80,14 +86,35 @@ public class BladeController : MonoBehaviour
             view.UpdatePosition(currentWorldPosition);
             view.StartSlicing();
             _previousPosition = currentWorldPosition;
+            
+            _accumulatedDistance = 0f; // Reset lại khi bắt đầu chạm tay
             return;
         }
 
         view.UpdatePosition(currentWorldPosition);
 
         float distance = Vector2.Distance(currentWorldPosition, _previousPosition);
+        
         if (distance > minSliceVelocity)
         {
+            // --- LOGIC ÂM THANH MỚI: TÍNH THEO QUÃNG ĐƯỜNG ---
+            _accumulatedDistance += distance;
+
+            // Nếu đã vung đủ 1 đoạn dài -> Phát tiếng và reset lại biến đếm
+            if (_accumulatedDistance >= distanceToPlaySwoosh)
+            {
+                if (swooshSounds != null && swooshSounds.Length > 0 && _audioService != null)
+                {
+                    // Bốc ngẫu nhiên 1 file âm thanh trong mảng
+                    AudioClip randomSwoosh = swooshSounds[Random.Range(0, swooshSounds.Length)];
+                    _audioService.PlaySFX(randomSwoosh, volume: 0.6f, randomizePitch: true);
+                }
+                
+                // Trừ đi quãng đường đã dùng thay vì đưa về 0 để tránh mất phần dư
+                _accumulatedDistance -= distanceToPlaySwoosh; 
+            }
+            // --- KẾT THÚC LOGIC ÂM THANH ---
+
             int hitCount = Physics2D.LinecastNonAlloc(_previousPosition, currentWorldPosition, _hitsBuffer, fruitLayer);
             
             for (int i = 0; i < hitCount; i++)
@@ -105,19 +132,23 @@ public class BladeController : MonoBehaviour
                         if (fruit.IsBomb())
                         {
                             LockBlade(); 
-                            fruit.Slice(cutDirection).Forget(); 
+                            fruit.Slice(cutDirection, _previousPosition, currentWorldPosition).Forget(); 
                             break; 
                         }
                         else
                         {
-                            fruit.Slice(cutDirection).Forget();
+                            fruit.Slice(cutDirection, _previousPosition, currentWorldPosition).Forget();
                         }
                     }
                 }
             }
         }
+        else
+        {
+            // Lưỡi kiếm di chuyển quá chậm (người chơi giữ im chuột) -> Reset quãng đường
+            _accumulatedDistance = 0f;
+        }
 
-        // Chỉ cập nhật previousPosition nếu không bị khóa
         if (!_isLocked)
         {
             _previousPosition = currentWorldPosition;
@@ -127,6 +158,7 @@ public class BladeController : MonoBehaviour
     private void StopSlice()
     {
         _isSlicing = false;
+        _accumulatedDistance = 0f; // Reset dọn dẹp khi nhấc tay lên
         view.StopSlicing();
     }
 
