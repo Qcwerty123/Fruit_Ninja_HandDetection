@@ -5,13 +5,12 @@ using Reflex.Attributes;
 using Cysharp.Threading.Tasks;
 using System.Threading;
 
-// Chuyển thành MonoBehaviour để kéo thả AudioMixer vào Inspector
 public class AudioService : MonoBehaviour 
 {
     [Header("Mixer & Routing")]
     [SerializeField] private AudioMixer mainMixer;
     [SerializeField] private AudioMixerGroup musicGroup;
-    [SerializeField] private AudioMixerGroup sfxGroup; // Dây cắm cho các loa trong Pool
+    [SerializeField] private AudioMixerGroup sfxGroup; 
     
     [Header("Music Source")]
     [SerializeField] private AudioSource musicSource;
@@ -23,15 +22,14 @@ public class AudioService : MonoBehaviour
 
     private void Awake()
     {
-        // Khởi tạo Pool
         _audioPool = new ObjectPool<AudioSource>(
             createFunc: () => {
                 GameObject go = new GameObject("[AUDIO]_PooledSource");
-                go.transform.SetParent(this.transform); // Gom gọn vào AudioService cho đỡ rác Hierarchy
+                go.transform.SetParent(this.transform); 
                 
                 AudioSource source = go.AddComponent<AudioSource>();
                 source.playOnAwake = false;
-                source.outputAudioMixerGroup = sfxGroup; // QUAN TRỌNG: Cắm dây loa vào SFX Mixer
+                source.outputAudioMixerGroup = sfxGroup; 
                 
                 return source;
             },
@@ -49,15 +47,23 @@ public class AudioService : MonoBehaviour
 
     private void Start()
     {
-        // Khôi phục cài đặt từ lần chơi trước
+        // 1. Khôi phục trạng thái Mute
         IsMusicMuted = PlayerPrefs.GetInt("Settings_MusicMuted", 0) == 1;
         IsSfxMuted = PlayerPrefs.GetInt("Settings_SfxMuted", 0) == 1;
 
+        // 2. Khôi phục âm lượng Slider (Mặc định là 1f - 100%)
+        float savedBGMVol = GetBGMVolume();
+        float savedSfxVol = GetSFXVolume();
+
+        // 3. Áp dụng ngay khi khởi động
+        SetBGMVolume(savedBGMVol);
+        SetSFXVolume(savedSfxVol);
+        
         ApplyMusicSetting();
         ApplySfxSetting();
     }
 
-    // ================= CHƠI NHẠC NỀN (BGM) =================
+    // ================= CHƠI NHẠC NỀN & SFX =================
     public void PlayMusic(AudioClip clip, bool loop = true)
     {
         if (clip == null) return;
@@ -66,21 +72,16 @@ public class AudioService : MonoBehaviour
         musicSource.Play();
     }
 
-    // ================= CHƠI HIỆU ỨNG (SFX bằng POOL) =================
     public void PlaySFX(AudioClip clip, float volume = 1f, bool randomizePitch = true)
     {
         if (clip == null) return;
 
-        // Bốc 1 cái loa từ trong kho ra
         AudioSource source = _audioPool.Get();
-        
         source.clip = clip;
         source.volume = volume;
-        source.pitch = randomizePitch ? Random.Range(0.85f, 1.15f) : 1f; // Pitch hoàn toàn độc lập
-        
+        source.pitch = randomizePitch ? Random.Range(0.85f, 1.15f) : 1f; 
         source.Play();
 
-        // Thu hồi loa sau khi phát xong
         ReturnToPoolAsync(source, clip.length).Forget();
     }
 
@@ -96,6 +97,17 @@ public class AudioService : MonoBehaviour
             }
         }
         catch (System.OperationCanceledException) { }
+    }
+
+    // ================= GETTERS CHO UI SETTINGS =================
+    public float GetBGMVolume()
+    {
+        return PlayerPrefs.GetFloat("Settings_MusicVolValue", 1f);
+    }
+
+    public float GetSFXVolume()
+    {
+        return PlayerPrefs.GetFloat("Settings_SfxVolValue", 1f);
     }
 
     // ================= CÀI ĐẶT MIXER & UI =================
@@ -117,23 +129,31 @@ public class AudioService : MonoBehaviour
 
     private void ApplyMusicSetting()
     {
-        mainMixer.SetFloat("MusicVol", IsMusicMuted ? -80f : 0f);
+        // Nếu Mute thì ép về -80dB. Nếu Unmute thì khôi phục lại mức Volume của Slider.
+        if (IsMusicMuted)
+            mainMixer.SetFloat("MusicVol", -80f);
+        else
+            SetBGMVolume(GetBGMVolume());
     }
 
     private void ApplySfxSetting()
     {
-        mainMixer.SetFloat("SFXVol", IsSfxMuted ? -80f : 0f);
+        if (IsSfxMuted)
+            mainMixer.SetFloat("SFXVol", -80f);
+        else
+            SetSFXVolume(GetSFXVolume());
     }
 
-    public void SetMusicVolume(float normalizedVolume)
+    public void SetBGMVolume(float normalizedVolume)
     {
-        // Công thức chuyển đổi Linear (0-1) sang Decibel (-80 đến 0)
-        // Mathf.Max(0.0001f, ...) để tránh lỗi Toán học Log10(0) gây crash game
         float decibel = Mathf.Log10(Mathf.Max(0.0001f, normalizedVolume)) * 20f;
         
-        mainMixer.SetFloat("MusicVol", decibel);
+        // Chỉ thay đổi Mixer nếu KHÔNG bị Mute
+        if (!IsMusicMuted)
+        {
+            mainMixer.SetFloat("MusicVol", decibel);
+        }
 
-        // Lưu lại mức âm lượng
         PlayerPrefs.SetFloat("Settings_MusicVolValue", normalizedVolume);
         PlayerPrefs.Save();
     }
@@ -141,9 +161,22 @@ public class AudioService : MonoBehaviour
     public void SetSFXVolume(float normalizedVolume)
     {
         float decibel = Mathf.Log10(Mathf.Max(0.0001f, normalizedVolume)) * 20f;
-        mainMixer.SetFloat("SFXVol", decibel);
+        
+        if (!IsSfxMuted)
+        {
+            mainMixer.SetFloat("SFXVol", decibel);
+        }
 
         PlayerPrefs.SetFloat("Settings_SfxVolValue", normalizedVolume);
         PlayerPrefs.Save();
+    }
+
+    public void StopMusic()
+    {
+        if (musicSource != null)
+        {
+            musicSource.Stop();
+            musicSource.clip = null; // Giải phóng clip cũ
+        }
     }
 }

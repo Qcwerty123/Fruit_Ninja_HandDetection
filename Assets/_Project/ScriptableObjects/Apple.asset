@@ -15,9 +15,22 @@ MonoBehaviour:
   fruitName: Apple
   scoreValue: 1
   isBomb: 0
-  fruitPrefab: {fileID: 4273925979974701064, guid: 6e28637ba032bc24f9987e365ea2fad9, type: 3}
-  slicedPrefab: {fileID: 463047811900108987, guid: 361f7941893e0bc41a09a5cc62ef71fc, type: 3}
+  classicPrefab: {fileID: 8683917731083510566, guid: 372b489a6a28da143815773169f00d91, type: 3}
+  classicSlicedPrefab: {fileID: 9173422577419737080, guid: fd49d042c4c81a14090599cba80f8451, type: 3}
+  dynamicPrefab: {fileID: 8683917731083510566, guid: d6f2c1fc430814f46a478370b0304023, type: 3}
   baseJuiceParticle: {fileID: 3037950481174323527, guid: 4d96e816d3c48a14eaac35ea5a0019dc, type: 3}
-  splashColor: {r: 0.690566, g: 0, b: 0, a: 0.70980394}
-  specialJuiceParticle: {fileID: 0}
-  sliceSound: {fileID: 0}
+  splashColor: {r: 1, g: 1, b: 1, a: 0.70980394}
+  specialJuiceParticle: {fileID: 6115219206632827437, guid: 33b1018e0b8927d43b97a08ff6cc6cdd, type: 3}
+  impactVFX: {fileID: 1248630449097443032, guid: 55cf6e3c722e2e1409ae32c40a2631d4, type: 3}
+  splatterVFX: {fileID: 3037950481174323527, guid: 4d96e816d3c48a14eaac35ea5a0019dc, type: 3}
+  pulpVFX: {fileID: 1715699041468766228, guid: fbdd4abf449f88c46b5957a1d222b6ee, type: 3}
+  impactSounds:
+  - {fileID: 8300000, guid: 9cd6aef815074a5429ca527c38957938, type: 3}
+  splatterSounds:
+  - {fileID: 8300000, guid: 28a68776f139ede49a408c4ddbaff422, type: 3}
+  - {fileID: 8300000, guid: ad2b4f0f84e1dbf4ea829183557b3dea, type: 3}
+  - {fileID: 8300000, guid: 9b6e23e04bad079449c9545365bd9352, type: 3}
+  - {fileID: 8300000, guid: bb27c74910a45814c9a2a4750ef3a3ee, type: 3}
+  detailSounds:
+  - {fileID: 8300000, guid: fbf2b996ad81e8f44aba86eac3eef2e4, type: 3}
+  - {fileID: 8300000, guid: e1807fb9833b01b4a9b8155c6545288a, type: 3}

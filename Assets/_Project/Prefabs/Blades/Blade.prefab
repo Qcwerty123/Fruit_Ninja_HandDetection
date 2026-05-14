@@ -203,3 +203,9 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1024
   minSliceVelocity: 0.01
+  swooshSounds:
+  - {fileID: 8300000, guid: 2b988bff800ea2d4594aaef1f4ce1009, type: 3}
+  - {fileID: 8300000, guid: 52f0acfb6cd641c46beea4b305401133, type: 3}
+  - {fileID: 8300000, guid: 39a2468bf2986c842b8ce5c617af5a5d, type: 3}
+  - {fileID: 8300000, guid: 2dfbbf94a8f372041a0eece7cf871d5a, type: 3}
+  distanceToPlaySwoosh: 2

@@ -15,7 +15,16 @@ MonoBehaviour:
   fruitName: Bomb
   scoreValue: 1
   isBomb: 1
-  fruitPrefab: {fileID: 8957990590071727976, guid: 0894a7bcea8aee2418cc68fe74b31c37, type: 3}
-  slicedPrefab: {fileID: 0}
-  juiceParticle: {fileID: 0}
-  sliceSound: {fileID: 0}
+  classicPrefab: {fileID: 3194051679115611939, guid: c559be0fad8b4034f9f600b088483943, type: 3}
+  classicSlicedPrefab: {fileID: 0}
+  dynamicPrefab: {fileID: 3194051679115611939, guid: c559be0fad8b4034f9f600b088483943, type: 3}
+  baseJuiceParticle: {fileID: 0}
+  splashColor: {r: 1, g: 1, b: 1, a: 1}
+  specialJuiceParticle: {fileID: 0}
+  impactVFX: {fileID: 0}
+  splatterVFX: {fileID: 0}
+  pulpVFX: {fileID: 0}
+  impactSounds:
+  - {fileID: 8300000, guid: 38c428706a7ee3243b60db00fed988e4, type: 3}
+  splatterSounds: []
+  detailSounds: []

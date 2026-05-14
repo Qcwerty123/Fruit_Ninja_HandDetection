@@ -13,10 +13,14 @@ public class SpawnerController : MonoBehaviour
     [Inject] private readonly FruitPoolService _fruitPoolService;
     [Inject] private readonly GameModel _gameModel;
     [Inject] private readonly GameSettings _gameSettings;
+    [Inject] private readonly AudioService _audioService; // [CẬP NHẬT] Tiêm AudioService để phát tiếng ném
+
+    [Header("Audio (Âm thanh)")]
+    [Tooltip("Tiếng 'Vút' khi trái cây được bắn lên")]
+    [SerializeField] private AudioClip _fruitTossSound; 
 
     private float bombSpawnChance => _gameSettings.BombSpawnChance;
 
-    // BỘ ĐỆM CACHE TRÁNH RÁC BỘ NHỚ (Garbage Collection)
     private List<FruitData> _bombsList = new List<FruitData>();
     private List<FruitData> _normalFruitsList = new List<FruitData>();
 
@@ -27,30 +31,29 @@ public class SpawnerController : MonoBehaviour
 
     private void Start()
     {
-        // TIỀN XỬ LÝ DỮ LIỆU: Phân loại 1 lần duy nhất lúc bật game
-        PreloadFruitData();
+        _gameModel.CurrentMode
+            .Subscribe(mode => PreloadFruitData(mode))
+            .RegisterTo(destroyCancellationToken);
 
         SpawnLoopAsync(this.GetCancellationTokenOnDestroy()).Forget();
     }
 
-    private void PreloadFruitData()
+    private void PreloadFruitData(GameMode mode)
     {
-        var availableFruits = _gameSettings.AvailableFruits;
+        _bombsList.Clear();
+        _normalFruitsList.Clear();
+
+        var availableFruits = _gameSettings.GetAvailableFruits(mode);
         if (availableFruits == null) return;
 
-        // Quét bằng vòng lặp for truyền thống thay vì LINQ để tốc độ bàn thờ nhất
         for (int i = 0; i < availableFruits.Count; i++)
         {
             var fruitData = availableFruits[i];
-            if (fruitData.isBomb)
-            {
-                _bombsList.Add(fruitData);
-            }
-            else
-            {
-                _normalFruitsList.Add(fruitData);
-            }
+            if (fruitData.isBomb) _bombsList.Add(fruitData);
+            else _normalFruitsList.Add(fruitData);
         }
+        
+        Debug.Log($"<color=green>[Spawner]</color> Đã nạp {availableFruits.Count} vật phẩm cho chế độ {mode}");
     }
 
     private async UniTaskVoid SpawnLoopAsync(CancellationToken ct)
@@ -59,12 +62,17 @@ public class SpawnerController : MonoBehaviour
         {
             while (!ct.IsCancellationRequested)
             {
-                await UniTask.WaitUntil(() => _gameModel.State.Value == GameState.Playing, cancellationToken: ct);
+                // ==========================================
+                // [CẬP NHẬT 1] KIỂM TRA CỜ IS_SPAWNING
+                // Đợi cho đến khi Game ở trạng thái Playing VÀ HUD đếm ngược xong (IsSpawning = true)
+                // ==========================================
+                await UniTask.WaitUntil(() => _gameModel.State.Value == GameState.Playing && _gameModel.IsSpawning.Value, cancellationToken: ct);
 
                 float delay = Random.Range(_gameSettings.MinDelay, _gameSettings.MaxDelay);
                 await UniTask.WaitForSeconds(delay, cancellationToken: ct);
 
-                if (_gameModel.State.Value != GameState.Playing) continue;
+                // [CẬP NHẬT 2] Kiểm tra lại cờ một lần nữa sau khi delay, đề phòng người chơi vừa bấm Pause
+                if (_gameModel.State.Value != GameState.Playing || !_gameModel.IsSpawning.Value) continue;
 
                 SpawnAndLaunch();
             }
@@ -74,15 +82,11 @@ public class SpawnerController : MonoBehaviour
 
     private void SpawnAndLaunch()
     {
-        // 1. Kiểm tra tỷ lệ có Bom thực tế không
         float actualBombChance = (_bombsList.Count > 0) ? bombSpawnChance : 0f;
-
-        // 2. Quay số ngẫu nhiên
         bool isSpawningBomb = Random.value < actualBombChance;
 
         FruitData selectedData = null;
 
-        // Lấy dữ liệu TRỰC TIẾP TỪ BỘ ĐỆM CACHE, không tính toán lại
         if (isSpawningBomb)
         {
             selectedData = _bombsList[Random.Range(0, _bombsList.Count)];
@@ -94,13 +98,22 @@ public class SpawnerController : MonoBehaviour
 
         if (selectedData == null) return;
 
-        // 3. Tính toán vị trí và yêu cầu Pool
         Vector2 spawnPosition = GetDynamicSpawnPosition();
+        
         FruitController fruit = _fruitPoolService.Spawn(selectedData, spawnPosition);
 
         if (fruit != null)
         {
             ApplyLaunchPhysics(fruit);
+            
+            // ==========================================
+            // [CẬP NHẬT 3] PHÁT ÂM THANH NÉM
+            // ==========================================
+            if (_audioService != null && _fruitTossSound != null)
+            {
+                // Cho volume hơi nhỏ (0.4f) để làm nền, không lấn át tiếng chém (Impact)
+                _audioService.PlaySFX(_fruitTossSound, volume: 0.4f, randomizePitch: true);
+            }
         }
     }
 
