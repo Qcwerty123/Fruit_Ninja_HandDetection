@@ -14,13 +14,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _startingLives: 10
   _classicFruits:
+  - {fileID: 11400000, guid: 1f96befc85a231d42a03b9bfddf7d1d8, type: 2}
   - {fileID: 11400000, guid: d863a869b02c7ac48829a2b1d80cc294, type: 2}
   - {fileID: 11400000, guid: 4c100a3ff04c1f44db5f06ab051616b9, type: 2}
-  - {fileID: 11400000, guid: 1f96befc85a231d42a03b9bfddf7d1d8, type: 2}
+  - {fileID: 11400000, guid: d7044f92c7946be418a83bca55903fd8, type: 2}
+  - {fileID: 11400000, guid: c53b836b356181548b4d3ce84fbb2a60, type: 2}
+  - {fileID: 11400000, guid: 8efc51b33b4686340b38c2cbcf15f3ea, type: 2}
+  - {fileID: 11400000, guid: 1fa17d6f9353e1745b53866e2572dbb5, type: 2}
+  - {fileID: 11400000, guid: ed40c6dfdf1b5304dbf71b44880f4da1, type: 2}
   _dynamicFruits:
+  - {fileID: 11400000, guid: 1f96befc85a231d42a03b9bfddf7d1d8, type: 2}
   - {fileID: 11400000, guid: d863a869b02c7ac48829a2b1d80cc294, type: 2}
   - {fileID: 11400000, guid: 4c100a3ff04c1f44db5f06ab051616b9, type: 2}
-  - {fileID: 11400000, guid: 1f96befc85a231d42a03b9bfddf7d1d8, type: 2}
+  - {fileID: 11400000, guid: d7044f92c7946be418a83bca55903fd8, type: 2}
+  - {fileID: 11400000, guid: c53b836b356181548b4d3ce84fbb2a60, type: 2}
+  - {fileID: 11400000, guid: 8efc51b33b4686340b38c2cbcf15f3ea, type: 2}
+  - {fileID: 11400000, guid: 1fa17d6f9353e1745b53866e2572dbb5, type: 2}
+  - {fileID: 11400000, guid: ed40c6dfdf1b5304dbf71b44880f4da1, type: 2}
   _minDelay: 0.4
   _maxDelay: 0.8
   bombSpawnChance: 0.15

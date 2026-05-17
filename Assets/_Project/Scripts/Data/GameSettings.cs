@@ -21,10 +21,10 @@ public class GameSettings : ScriptableObject
     [SerializeField] private float bombSpawnChance = 0.15f; 
 
     [Header("Launch Physics")]
-    [SerializeField] private float _minForce = 13f;
+    [SerializeField] private float _minForce = 15f;
     [SerializeField] private float _maxForce = 17f;
-    [SerializeField] private float _minTorque = -20f;
-    [SerializeField] private float _maxTorque = 20f;
+    [SerializeField] private float _minTorque = -5f;
+    [SerializeField] private float _maxTorque = 5f;
     [SerializeField] private float _maxAngle = 15f;
 
     // --- PUBLIC PROPERTIES ---

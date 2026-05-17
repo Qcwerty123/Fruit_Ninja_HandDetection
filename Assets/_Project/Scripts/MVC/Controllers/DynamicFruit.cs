@@ -1,5 +1,5 @@
 using UnityEngine;
-using Reflex.Attributes; // Thêm thư viện DI
+using Reflex.Attributes;
 
 [RequireComponent(typeof(PolygonCollider2D))]
 public class DynamicFruit : FruitController
@@ -8,7 +8,8 @@ public class DynamicFruit : FruitController
     [SerializeField] private Material _sliceMaterial;
     [SerializeField] private GameObject _blankFragmentPrefab;
 
-    protected override void SpawnSlicedPieces(Vector2 cutDirection, Vector2 cutStart, Vector2 cutEnd)
+    // [CẬP NHẬT] Thêm velocity và isCritical vào chữ ký hàm
+    protected override void SpawnSlicedPieces(Vector2 cutDirection, Vector2 cutStart, Vector2 cutEnd, float velocity, bool isCritical)
     {
         if (_fragmentPoolService == null || _blankFragmentPrefab == null) return;
 
@@ -18,7 +19,12 @@ public class DynamicFruit : FruitController
 
         if (leftHalf != null && rightHalf != null)
         {
+            // Cắt Mesh 2D
             DynamicSlicer2D.Slice(gameObject, cutStart, cutEnd, _sliceMaterial, leftHalf, rightHalf);
+
+            // Tùy chọn (Juice): Nếu class PooledDynamicFragment của bạn có hàm ép lực (AddForce), 
+            // bạn có thể lấy velocity và isCritical truyền vào 2 mảnh leftHalf và rightHalf ở đây
+            // để chúng văng mạnh sang 2 bên khi chém chí mạng.
         }
     }
 }

@@ -47,7 +47,7 @@ public class GameModel
         Lives = new ReactiveProperty<int>(startingLives);
         
         // Khởi đầu ở MainMenu, ta phải đóng băng thời gian để Spawner không ném trái cây
-        Time.timeScale = 0f; 
+        Time.timeScale = 1f; 
     }
 
     // Hàm này sẽ được gọi bởi Nút "Play" ở MainMenuPanel
@@ -98,7 +98,7 @@ public class GameModel
 
         // Quản lý vật lý tập trung: Chỉ đóng băng thời gian khi ở Menu hoặc Pause.
         // Khi Game Over, Time.timeScale vẫn = 1 để trái cây rớt nốt xuống đáy màn hình cho đẹp.
-        if (newState == GameState.Paused || newState == GameState.MainMenu)
+        if (newState == GameState.Paused)// || newState == GameState.MainMenu)
         {
             Time.timeScale = 0f;
         }

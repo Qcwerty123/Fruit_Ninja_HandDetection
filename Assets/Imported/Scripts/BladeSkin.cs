@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class BladeSkin : MonoBehaviour, ISliceable
+public class BladeSkin : MonoBehaviour, ISliceablee
 {
 	[SerializeField] private GameObject bonus = null;
 	[SerializeField] private Gradient bladeGradient = null;

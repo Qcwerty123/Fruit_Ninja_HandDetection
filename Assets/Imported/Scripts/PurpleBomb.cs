@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class PurpleBomb : MonoBehaviour, ISliceable
+public class PurpleBomb : MonoBehaviour, ISliceablee
 {
 	public static event Action<PurpleBomb> OnBombSpawned;
 

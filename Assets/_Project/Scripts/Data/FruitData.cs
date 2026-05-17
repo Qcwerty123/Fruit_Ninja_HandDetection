@@ -6,6 +6,7 @@ public class FruitData : ScriptableObject
     [Header("Basic Info")]
     public string fruitName;
     public int scoreValue = 1;
+    public int criticalBonusScore = 3;
     public bool isBomb = false;
 
     [Header("Visuals - Classic Mode")]

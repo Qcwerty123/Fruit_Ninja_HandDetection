@@ -3,7 +3,7 @@ using UnityEngine.Pool;
 using Cysharp.Threading.Tasks;
 
 [RequireComponent(typeof(Rigidbody2D))]
-public class FruitController : MonoBehaviour
+public class FruitController : MonoBehaviour, ISliceable
 {
     [Header("Audio (Âm thanh cục bộ)")]
     [Tooltip("Kéo AudioSource chứa tiếng xì xì của Bom vào đây (Nếu là trái cây thường thì để trống)")]
@@ -21,7 +21,6 @@ public class FruitController : MonoBehaviour
     protected AudioService _audioService;
     protected ScreenFlashService _screenFlashService;
 
-    // [CẬP NHẬT] Thêm biến cờ để ngăn chém 2 lần vào cùng 1 quả
     protected bool _isSliced = false; 
 
     protected virtual void Awake()
@@ -44,7 +43,6 @@ public class FruitController : MonoBehaviour
         _screenFlashService = screenFlashService;
         _fragmentPoolService = fragmentPoolService; 
 
-        // Reset trạng thái vật lý và cờ chém khi lấy từ Pool ra
         _rigidbody.velocity = Vector2.zero;
         _rigidbody.angularVelocity = 0f;
         _collider.enabled = true; 
@@ -62,49 +60,44 @@ public class FruitController : MonoBehaviour
         _rigidbody.AddTorque(torque, ForceMode2D.Impulse);
     }
 
-    public async UniTaskVoid Slice(Vector2 cutDirection, Vector2 cutStart, Vector2 cutEnd)
+    // =========================================================
+    // [CẬP NHẬT] Đã thêm velocity và isCritical vào chữ ký hàm
+    // =========================================================
+    public async UniTaskVoid Slice(Vector2 cutDirection, Vector2 cutStart, Vector2 cutEnd, float velocity, bool isCritical)
     {
-        // Chặn ngay nếu quả này đã bị chém rồi (Tránh lỗi văng rác Pool)
         if (_isSliced) return;
         _isSliced = true;
 
         _collider.enabled = false;
 
-        // Tắt tiếng xì xì ngay lập tức nếu là Bom
         if (_loopingAudioSource != null && _loopingAudioSource.isPlaying)
         {
             _loopingAudioSource.Stop();
         }
         
+        // Không truyền isCritical vào đây vì Juice Hit-Stop của Critical đã được xử lý trên BladeController
         ApplyJuiceEffects();
 
-        // =========================================================
-        // [CẬP NHẬT] HỆ THỐNG AUDIO LAYERING (TRỘN ÂM THANH)
-        // =========================================================
         if (_data != null && _audioService != null)
         {
-            // 1. Lớp va đập (Khô - Bắt buộc)
             if (_data.impactSounds != null && _data.impactSounds.Length > 0)
             {
                 AudioClip impact = _data.impactSounds[Random.Range(0, _data.impactSounds.Length)];
                 _audioService.PlaySFX(impact, volume: 1f, randomizePitch: true);
             }
 
-            // 2. Lớp xịt nước (Ướt - Nếu có)
             if (_data.splatterSounds != null && _data.splatterSounds.Length > 0)
             {
                 AudioClip splatter = _data.splatterSounds[Random.Range(0, _data.splatterSounds.Length)];
                 _audioService.PlaySFX(splatter, volume: 0.85f, randomizePitch: true);
             }
 
-            // 3. Lớp chi tiết (Nhỏ giọt - Nếu có)
             if (_data.detailSounds != null && _data.detailSounds.Length > 0)
             {
                 AudioClip detail = _data.detailSounds[Random.Range(0, _data.detailSounds.Length)];
                 _audioService.PlaySFX(detail, volume: 0.6f, randomizePitch: true);
             }
         }
-        // =========================================================
 
         if (_data.isBomb)
         {
@@ -112,7 +105,8 @@ public class FruitController : MonoBehaviour
         }
         else 
         {
-            HandleFruitLogic(cutDirection, cutStart, cutEnd);
+            // Truyền velocity và isCritical xuống dưới
+            HandleFruitLogic(cutDirection, cutStart, cutEnd, velocity, isCritical);
         }
 
         Despawn();
@@ -128,6 +122,7 @@ public class FruitController : MonoBehaviour
         }
         else
         {
+            // Lực chém thường
             GameJuice.HitStop(0.04f).Forget();
         }
     }
@@ -143,73 +138,61 @@ public class FruitController : MonoBehaviour
         _gameModel?.TriggerGameOver();
     }
 
-    // private void HandleFruitLogic(Vector2 cutDirection, Vector2 cutStart, Vector2 cutEnd)
-    // {
-    //     _gameModel?.AddScore(_data.scoreValue);
-    //     _comboService?.RecordSlice(transform.position);
-
-    //     SpawnSlicedPieces(cutDirection, cutStart, cutEnd);
-
-    //     if (_vfxPoolService != null)
-    //     {
-    //         if (_data.specialJuiceParticle != null)
-    //         {
-    //             _vfxPoolService.Spawn(_data.specialJuiceParticle, transform.position, Quaternion.identity);
-    //         }
-    //         else if (_data.baseJuiceParticle != null)
-    //         {
-    //             _vfxPoolService.SpawnParticleWithColor(_data.baseJuiceParticle, transform.position, _data.splashColor);
-    //         }
-    //     }
-    // }
-
-    private void HandleFruitLogic(Vector2 cutDirection, Vector2 cutStart, Vector2 cutEnd)
+    // [CẬP NHẬT] Đã nhận thêm biến để truyền đi tiếp
+    private void HandleFruitLogic(Vector2 cutDirection, Vector2 cutStart, Vector2 cutEnd, float velocity, bool isCritical)
     {
-        _gameModel?.AddScore(_data.scoreValue);
-        _comboService?.RecordSlice(transform.position);
+        int scoreToAdd = _data.scoreValue;
+        
+        if (isCritical)
+        {
+            // Lấy điểm bonus trực tiếp từ cấu hình của quả này
+            scoreToAdd += _data.criticalBonusScore; 
+        }
 
-        SpawnSlicedPieces(cutDirection, cutStart, cutEnd);
+        _gameModel?.AddScore(scoreToAdd);
+        
+        // Spawn mảnh vỡ và truyền lực (velocity) + cờ bùng nổ (isCritical)
+        SpawnSlicedPieces(cutDirection, cutStart, cutEnd, velocity, isCritical);
 
-        // [CẬP NHẬT] Gọi hệ thống VFX phân lớp và truyền hướng chém vào
-        SpawnLayeredJuiceVFX(cutDirection); 
+        SpawnLayeredJuiceVFX(cutDirection, isCritical); 
     }
 
-    // ==========================================
-    // TẠO VFX PHÂN LỚP THEO HƯỚNG CHÉM (CẬP NHẬT)
-    // ==========================================
-    private void SpawnLayeredJuiceVFX(Vector2 cutDirection)
+    private void SpawnLayeredJuiceVFX(Vector2 cutDirection, bool isCritical)
     {
         if (_vfxPoolService == null || _data == null) return;
 
-        // Tính toán góc của nhát chém
         float cutAngle = Mathf.Atan2(cutDirection.y, cutDirection.x) * Mathf.Rad2Deg;
         Quaternion cutRotation = Quaternion.Euler(0, 0, cutAngle);
 
         if (!_data.isBomb)
         {
-            // 1. Lớp Impact (ĐÃ SỬA: Ép xoay theo hướng chém)
             if (_data.impactVFX != null)
             {
                 _vfxPoolService.SpawnParticleWithColorAndRotation(_data.impactVFX, transform.position, _data.splashColor, cutRotation);
             }
 
-            // 2. Lớp Splatter (Tia nước xoay theo hướng chém)
             if (_data.splatterVFX != null)
             {
                 _vfxPoolService.SpawnParticleWithColorAndRotation(_data.splatterVFX, transform.position, _data.splashColor, cutRotation);
             }
 
-            // 3. Lớp Pulp (Rơi tự do hoặc dính tường, tỏa tròn đều nên không cần xoay)
             if (_data.pulpVFX != null)
             {
                 _vfxPoolService.SpawnParticleWithColor(_data.pulpVFX, transform.position, _data.splashColor);
             }
+            
+            // [TÙY CHỌN] Nếu là Critical, bạn có thể gọi thêm một VFX đặc biệt (VD: nổ tia sáng vàng chói) ở đây
+            if (isCritical)
+            {
+                // _vfxPoolService.SpawnParticle(criticalVFXPrefab, transform.position);
+            }
         }
     }
 
-    protected virtual void SpawnSlicedPieces(Vector2 cutDirection, Vector2 cutStart, Vector2 cutEnd)
+    // [CẬP NHẬT] Interface cho class kế thừa văng mảnh vỡ
+    protected virtual void SpawnSlicedPieces(Vector2 cutDirection, Vector2 cutStart, Vector2 cutEnd, float velocity, bool isCritical)
     {
-        // Lớp cha không làm gì cả
+        // Class con (như PooledSlicedFruit3D) sẽ override hàm này và nhận vận tốc chém.
     }
 
     public void Despawn()
@@ -221,4 +204,6 @@ public class FruitController : MonoBehaviour
     }
 
     public bool IsBomb() => _data != null && _data.isBomb;
+
+    public FruitData Data => _data;
 }

@@ -9,19 +9,26 @@ public class ComboService
     private int _currentCombo;
     private CancellationTokenSource _debounceCts;
 
-    // Chuẩn Naming: Động từ quá khứ, không có chữ "On" ở đầu
-    public Subject<(int comboCount, Vector2 position)> ComboAchieved { get; } = new();
+    // Cập nhật Tuple để truyền thêm cờ isCritical sang cho các View lắng nghe
+    public Subject<(int comboCount, Vector2 position, bool isCritical, int criticalBonus)> ComboAchieved { get; } = new();
 
     public ComboService(GameModel gameModel)
     {
         _gameModel = gameModel;
     }
 
-    public void RecordSlice(Vector2 slicePosition)
+    // Đổi tên hàm thành AddFruitToCombo để khớp cấu trúc gọi từ BladeController
+    public void AddFruitToCombo(FruitController fruit, bool isCritical)
     {
+        Vector2 slicePosition = fruit.transform.position;
         _currentCombo++;
 
-        // Hủy bộ đếm thời gian cũ (nếu có) để tạo bộ đếm mới (Debounce)
+        if (isCritical)
+        {
+            // Truyền thẳng số điểm bonus của quả này vào sự kiện
+            ComboAchieved.OnNext((0, slicePosition, true, fruit.Data.criticalBonusScore));
+        }
+
         _debounceCts?.Cancel();
         _debounceCts?.Dispose();
         _debounceCts = new CancellationTokenSource();
@@ -33,25 +40,25 @@ public class ComboService
     {
         try
         {
-            // Cửa sổ thời gian Combo (0.15 giây)
+            // Cửa sổ thời gian tích lũy Combo (0.15 giây)
             await UniTask.WaitForSeconds(0.15f, cancellationToken: ct);
 
-            // Nếu qua 0.15s người chơi không chém thêm quả nào -> Chốt sổ
+            // Nếu qua 0.15s người chơi không chém thêm quả nào -> Chốt sổ Combo
             if (_currentCombo >= 3)
             {
                 // Thưởng điểm bằng đúng số combo (Chém 4 quả = Thưởng 4 điểm)
                 _gameModel.AddScore(_currentCombo);
                 
-                // Kích hoạt sự kiện để UI hiển thị
-                ComboAchieved.OnNext((_currentCombo, lastSlicePos));
+                // Kích hoạt sự kiện để UI hiển thị Combo (isCritical = false vì đây là luồng Combo chuẩn)
+                ComboAchieved.OnNext((_currentCombo, lastSlicePos, false, 0));
             }
 
-            // Reset đếm lại từ đầu
+            // Reset đếm lại từ đầu cho lượt vung kiếm kế tiếp
             _currentCombo = 0;
         }
         catch (System.OperationCanceledException)
         {
-            // Bị hủy do có quả táo khác vừa bị chém đè lên -> Nuốt lỗi để tiếp tục tích lũy!
+            // Bị hủy do có quả khác vừa bị chém đè lên trong vòng 0.15s -> Tiếp tục tích lũy Combo!
         }
     }
 }

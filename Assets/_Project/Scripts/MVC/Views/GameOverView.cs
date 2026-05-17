@@ -1,193 +1,201 @@
 using UnityEngine;
 using TMPro;
-using UnityEngine.UI;
 using Reflex.Attributes;
-using UnityEngine.SceneManagement;
 using Cysharp.Threading.Tasks;
+using System.Threading;
 
 public class GameOverView : MonoBehaviour
 {
-    [Header("UI Elements")]
-    [SerializeField] private Transform panelContainer;
-    [SerializeField] private TextMeshProUGUI currentScoreText;
-    [SerializeField] private TextMeshProUGUI highScoreText;
+    [Header("Cinematic Background")]
+    [Tooltip("Tấm nền đen mờ bao phủ toàn màn hình")]
+    [SerializeField] private CanvasGroup _backgroundDimmer; 
 
-    [Header("Audio (Âm thanh)")]
-    [Tooltip("Âm thanh chốt điểm (VD: Tiếng Ting, Bell hoặc Cash Register)")]
-    [SerializeField] private AudioClip scoreFinishSound;
+    [Header("UI Elements (Bảng điểm)")]
+    [SerializeField] private Transform _panelContainer;
+    [SerializeField] private TextMeshProUGUI _currentScoreText;
+    [SerializeField] private TextMeshProUGUI _highScoreText;
 
-    [Header("Nút Retry (Chơi lại)")]
-    [SerializeField] private Button retryButton; 
-    [SerializeField] private DwellButton dwellRetryButton; 
+    [Header("Quản lý Nút Chém (Physical Buttons)")]
+    [Tooltip("Kéo GameObject chứa 2 nút chém Retry và Home ngoài Scene vào đây")]
+    [SerializeField] private GameObject _buttonsContainer;
+    [SerializeField] private SliceableButton _retrySliceButton; 
+    [SerializeField] private SliceableButton _homeSliceButton; 
 
-    [Header("Nút Settings (Cài đặt)")]
-    [SerializeField] private Button settingsButton; 
-    [SerializeField] private DwellButton dwellSettingsButton; 
-
-    [Header("Nút Home (Về Main Menu)")]
-    [SerializeField] private Button homeButton; 
-    [SerializeField] private DwellButton dwellHomeButton; 
+    [Header("Audio (Âm thanh Juice)")]
+    [SerializeField] private AudioClip _scoreTickSound;   // Tiếng lách cách nhẹ khi số đang chạy
+    [SerializeField] private AudioClip _scoreFinishSound; // Tiếng "Ting" khi chốt điểm hiện tại
+    [SerializeField] private AudioClip _newRecordSound;   // Tiếng reo hò/kèn vinh danh khi phá kỷ lục
 
     [Inject] private readonly GameModel _gameModel;
-    [Inject] private readonly AudioService _audioService; // Tiêm AudioService để phát tiếng
+    [Inject] private readonly AudioService _audioService; 
+
+    private CancellationTokenSource _cts;
 
     private void Start()
     {
-        // --- 1. SỰ KIỆN RETRY ---
-        if (retryButton != null)
-            retryButton.onClick.AddListener(OnRetryClicked);
-        if (dwellRetryButton != null)
-            dwellRetryButton.onDwellClick.AddListener(OnRetryClicked);
-
-        // --- 2. SỰ KIỆN SETTINGS ---
-        if (settingsButton != null)
-            settingsButton.onClick.AddListener(OpenSettings);
-        if (dwellSettingsButton != null)
-            dwellSettingsButton.onDwellClick.AddListener(OpenSettings);
-
-        // --- 3. SỰ KIỆN MAIN MENU ---
-        if (homeButton != null)
-            homeButton.onClick.AddListener(ReturnToMainMenu);
-        if (dwellHomeButton != null)
-            dwellHomeButton.onDwellClick.AddListener(ReturnToMainMenu);
+        // Đăng ký sự kiện nét chém thay cho Click chuột
+        if (_retrySliceButton != null) _retrySliceButton.OnSlicedEvent.AddListener(OnRetrySliced);
+        if (_homeSliceButton != null) _homeSliceButton.OnSlicedEvent.AddListener(ReturnToMainMenuSliced);
     }
 
-    // Gọi TỰ ĐỘNG khi UIManager bật Panel này lên
     private void OnEnable()
     {
-        // Khởi chạy chuỗi hiệu ứng Game Over
-        StartGameOverSequenceAsync().Forget();
+        // BẮT BUỘC: Mở khóa thời gian để các mảnh vỡ nút bấm có thể rơi tự do khi bị chém
+        Time.timeScale = 1f;
+
+        if (_buttonsContainer != null) _buttonsContainer.SetActive(true);
+
+        _cts = new CancellationTokenSource();
+        StartGameOverSequenceAsync(_cts.Token).Forget();
     }
 
-    private async UniTaskVoid StartGameOverSequenceAsync()
+    private void OnDisable()
     {
-        // 1. Reset text về 0 và lấy kỷ lục cũ
-        currentScoreText.text = "0";
+        // Hủy các luồng hiệu ứng đang chạy dở nếu Panel bị tắt đột ngột
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+
+        if (_buttonsContainer != null) _buttonsContainer.SetActive(false);
+    }
+
+    private async UniTaskVoid StartGameOverSequenceAsync(CancellationToken token)
+    {
+        // 1. Reset trạng thái ban đầu
+        _currentScoreText.text = "0";
         int oldHighScore = PlayerPrefs.GetInt("FruitNinja_HighScore", 0);
-        highScoreText.text = "Best: " + oldHighScore.ToString();
+        _highScoreText.text = "BEST: " + oldHighScore.ToString();
+        
+        if (_backgroundDimmer != null) _backgroundDimmer.alpha = 0f;
+        _panelContainer.localScale = Vector3.zero;
 
-        // 2. Chờ hiệu ứng bật Panel mở ra xong (0.25s)
-        await AnimatePanelAsync();
+        // 2. Chạy hiệu ứng xuất hiện (Mờ nền + Bật Bảng)
+        await AnimateIntroAsync(token);
 
-        // 3. Bắt đầu chạy hiệu ứng số điểm
-        await AnimateScoreTallyAsync(_gameModel.Score.Value, oldHighScore);
+        // 3. Chạy hiệu ứng đếm số điểm
+        await AnimateScoreTallyAsync(_gameModel.Score.Value, oldHighScore, token);
     }
 
-    private async UniTask AnimateScoreTallyAsync(int finalScore, int oldHighScore)
+    private async UniTask AnimateIntroAsync(CancellationToken token)
     {
-        float duration = 1.0f; // Thời gian chạy số (1 giây)
+        float duration = 0.35f;
         float elapsed = 0f;
 
-        // --- BƯỚC 1: CHẠY SỐ ĐIỂM HIỆN TẠI ---
         while (elapsed < duration)
         {
             elapsed += Time.unscaledDeltaTime;
             float t = elapsed / duration;
-            float easeT = 1f - Mathf.Pow(1f - t, 3f); // Ease-Out Cubic (Chạy nhanh lúc đầu, chậm dần về cuối)
+
+            // Nền đen từ từ hiện rõ (Alpha lên 0.7 để vẫn nhìn thấy mờ mờ cảnh game đằng sau)
+            if (_backgroundDimmer != null)
+                _backgroundDimmer.alpha = Mathf.Lerp(0f, 0.7f, t);
+
+            // Hiệu ứng Back-Ease-Out (Phóng to lố ra ngoài 1 tí rồi giật lại kích thước chuẩn)
+            float easeT = Mathf.Clamp01(t);
+            float c1 = 1.70158f;
+            float c3 = c1 + 1f;
+            float bounceScale = 1f + c3 * Mathf.Pow(easeT - 1f, 3f) + c1 * Mathf.Pow(easeT - 1f, 2f);
+
+            _panelContainer.localScale = Vector3.one * Mathf.Max(0, bounceScale);
+
+            await UniTask.Yield(PlayerLoopTiming.Update, token);
+        }
+        
+        if (_backgroundDimmer != null) _backgroundDimmer.alpha = 0.7f;
+        _panelContainer.localScale = Vector3.one;
+    }
+
+    private async UniTask AnimateScoreTallyAsync(int finalScore, int oldHighScore, CancellationToken token)
+    {
+        // Đợi 0.2s cho người chơi định hình bảng điểm rồi mới đếm số
+        await UniTask.WaitForSeconds(0.2f, ignoreTimeScale: true, cancellationToken: token);
+
+        float duration = 1.2f; 
+        float elapsed = 0f;
+        int lastTickValue = -1;
+
+        // --- BƯỚC 1: CHẠY SỐ TỪNG BƯỚC ---
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = elapsed / duration;
+            float easeT = 1f - Mathf.Pow(1f - t, 3f); // Chạy nhanh lúc đầu, rề rề lúc sau
             
             int currentVal = Mathf.RoundToInt(Mathf.Lerp(0, finalScore, easeT));
-            currentScoreText.text = currentVal.ToString();
-            
-            await UniTask.Yield(PlayerLoopTiming.Update, this.GetCancellationTokenOnDestroy());
-        }
-        // Đảm bảo số cuối cùng chính xác tuyệt đối
-        currentScoreText.text = finalScore.ToString();
+            _currentScoreText.text = currentVal.ToString();
 
-        // Phát âm thanh khi chốt xong điểm
-        if (_audioService != null && scoreFinishSound != null)
-        {
-            await PlayBounceAnimation(currentScoreText.transform);
-            _audioService.PlaySFX(scoreFinishSound, volume: 1f, randomizePitch: false);
+            // Phát tiếng lách cách mỗi khi số nhảy sang đơn vị mới
+            if (currentVal != lastTickValue && currentVal > 0)
+            {
+                lastTickValue = currentVal;
+                if (_audioService != null && _scoreTickSound != null)
+                {
+                    _audioService.PlaySFX(_scoreTickSound, volume: 0.5f, randomizePitch: true);
+                }
+            }
+            
+            await UniTask.Yield(PlayerLoopTiming.Update, token);
         }
+        
+        _currentScoreText.text = finalScore.ToString();
+
+        // Chốt điểm: Phát âm thanh Ting và nảy số
+        if (_audioService != null && _scoreFinishSound != null)
+            _audioService.PlaySFX(_scoreFinishSound, volume: 1f, randomizePitch: false);
+        await PlayBounceAnimation(_currentScoreText.transform, 1.4f, token);
 
         // --- BƯỚC 2: KIỂM TRA PHÁ KỶ LỤC ---
         if (finalScore > oldHighScore)
         {
-            // Nghỉ 0.5 giây để người chơi nhận ra mình vừa vượt kỷ lục
-            await UniTask.WaitForSeconds(0.5f, ignoreTimeScale: true, cancellationToken: this.GetCancellationTokenOnDestroy());
+            await UniTask.WaitForSeconds(0.4f, ignoreTimeScale: true, cancellationToken: token);
 
-            // Lưu kỷ lục mới vào hệ thống
             PlayerPrefs.SetInt("FruitNinja_HighScore", finalScore);
             PlayerPrefs.Save();
 
-            // Đổi chữ sang kỷ lục mới
-            highScoreText.text = "Best: " + finalScore.ToString();
+            _highScoreText.text = "NEW RECORD: " + finalScore.ToString();
+            _highScoreText.color = Color.yellow; // Đổi màu chữ sang vàng rực rỡ
 
-            // Phát chung file âm thanh nhưng cho Pitch cao hơn một chút để nghe phấn khích hơn
-            if (_audioService != null && scoreFinishSound != null)
-            {
-                _audioService.PlaySFX(scoreFinishSound, volume: 1f, randomizePitch: true); 
-            }
+            if (_audioService != null && _newRecordSound != null)
+                _audioService.PlaySFX(_newRecordSound, volume: 1f, randomizePitch: false);
 
-            // Chạy hiệu ứng nảy to chữ Best Score lên
-            await PlayBounceAnimation(highScoreText.transform);
+            await PlayBounceAnimation(_highScoreText.transform, 1.6f, token);
         }
     }
 
-    // Hàm hỗ trợ tạo hiệu ứng nảy (Scale Bounce) cho bất kỳ Transform nào
-    private async UniTask PlayBounceAnimation(Transform target)
+    private async UniTask PlayBounceAnimation(Transform target, float maxScale, CancellationToken token)
     {
         float bounceDuration = 0.15f;
         Vector3 originalScale = Vector3.one;
-        Vector3 targetScale = Vector3.one * 1.4f; // Phóng to 1.4 lần
+        Vector3 targetScale = Vector3.one * maxScale; 
 
         float elapsed = 0;
-        // Phóng to
+        // Boom lên
         while (elapsed < bounceDuration)
         {
             elapsed += Time.unscaledDeltaTime;
             target.localScale = Vector3.Lerp(originalScale, targetScale, elapsed / bounceDuration);
-            await UniTask.Yield(PlayerLoopTiming.Update, this.GetCancellationTokenOnDestroy());
+            await UniTask.Yield(PlayerLoopTiming.Update, token);
         }
 
         elapsed = 0;
-        // Thu nhỏ lại bình thường
+        // Thu về
         while (elapsed < bounceDuration)
         {
             elapsed += Time.unscaledDeltaTime;
             target.localScale = Vector3.Lerp(targetScale, originalScale, elapsed / bounceDuration);
-            await UniTask.Yield(PlayerLoopTiming.Update, this.GetCancellationTokenOnDestroy());
+            await UniTask.Yield(PlayerLoopTiming.Update, token);
         }
         target.localScale = originalScale;
     }
 
-    private void OnRetryClicked()
+    // --- HÀM GỌI KHI NÚT BỊ CHÉM ---
+    private void OnRetrySliced()
     {
-        Time.timeScale = 1f; 
-        if (dwellRetryButton != null) dwellRetryButton.ResetButton(); 
-        
         _gameModel.StartGame(); 
     }
 
-    private void OpenSettings()
+    private void ReturnToMainMenuSliced()
     {
-        if (dwellSettingsButton != null) dwellSettingsButton.ResetButton();
-        _gameModel.IsSettingsOpen.Value = true;
-    }
-
-    private void ReturnToMainMenu()
-    {
-        if (dwellHomeButton != null) dwellHomeButton.ResetButton();
-        
-        Time.timeScale = 1f; 
         _gameModel.State.Value = GameState.MainMenu;
-    }
-
-    private async UniTask AnimatePanelAsync()
-    {
-        panelContainer.localScale = Vector3.zero;
-        float elapsed = 0f;
-        float duration = 0.25f;
-
-        while (elapsed < duration)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            float t = elapsed / duration;
-            float easeT = 1f - Mathf.Pow(1f - t, 3f);
-            
-            panelContainer.localScale = Vector3.Lerp(Vector3.zero, Vector3.one, easeT);
-            await UniTask.Yield(PlayerLoopTiming.Update, this.GetCancellationTokenOnDestroy());
-        }
-        panelContainer.localScale = Vector3.one;
     }
 }

@@ -4,7 +4,7 @@ using UnityEngine;
 using System;
 
 
-public class RedBomb : MonoBehaviour, ISliceable
+public class RedBomb : MonoBehaviour, ISliceablee
 {
 	public static event Action<RedBomb> OnBombSpawned;
 

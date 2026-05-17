@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97344357523a07744bc13e4fdca025c5, type: 3}
+  m_Name: Coconut
+  m_EditorClassIdentifier: 
+  fruitName: Coconut
+  scoreValue: 1
+  isBomb: 0
+  classicPrefab: {fileID: 8683917731083510566, guid: c13b2144470d713459a9fac742066afe, type: 3}
+  classicSlicedPrefab: {fileID: 9173422577419737080, guid: 59a8a24e495168d4ea471464fc0f09c0, type: 3}
+  dynamicPrefab: {fileID: 2184114160452929702, guid: dd86c5be3096f9b459f9d779ef3c9c0c, type: 3}
+  baseJuiceParticle: {fileID: 3037950481174323527, guid: 4d96e816d3c48a14eaac35ea5a0019dc, type: 3}
+  splashColor: {r: 1, g: 1, b: 1, a: 0.8117647}
+  specialJuiceParticle: {fileID: 6115219206632827437, guid: 33b1018e0b8927d43b97a08ff6cc6cdd, type: 3}
+  impactVFX: {fileID: 1248630449097443032, guid: 55cf6e3c722e2e1409ae32c40a2631d4, type: 3}
+  splatterVFX: {fileID: 3037950481174323527, guid: 4d96e816d3c48a14eaac35ea5a0019dc, type: 3}
+  pulpVFX: {fileID: 1715699041468766228, guid: fbdd4abf449f88c46b5957a1d222b6ee, type: 3}
+  impactSounds:
+  - {fileID: 8300000, guid: 38987d7ba4c32f8468edf35596927dde, type: 3}
+  splatterSounds:
+  - {fileID: 8300000, guid: 28a68776f139ede49a408c4ddbaff422, type: 3}
+  - {fileID: 8300000, guid: ad2b4f0f84e1dbf4ea829183557b3dea, type: 3}
+  - {fileID: 8300000, guid: 9b6e23e04bad079449c9545365bd9352, type: 3}
+  - {fileID: 8300000, guid: bb27c74910a45814c9a2a4750ef3a3ee, type: 3}
+  detailSounds:
+  - {fileID: 8300000, guid: fbf2b996ad81e8f44aba86eac3eef2e4, type: 3}
+  - {fileID: 8300000, guid: e1807fb9833b01b4a9b8155c6545288a, type: 3}

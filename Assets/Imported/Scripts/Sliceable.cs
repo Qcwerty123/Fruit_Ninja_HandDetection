@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
-public class Sliceable : MonoBehaviour, ISliceable
+public class Sliceable : MonoBehaviour, ISliceablee
 {
 	[SerializeField] protected UnityEvent onSliced;
 

@@ -36,7 +36,7 @@ public class Blade : MonoBehaviour
 			float velocity = distance / Time.deltaTime;
 			for (int i = 0; i < hits.Length; i++)
 			{
-				ISliceable sliceable = hits[i].transform.GetComponent<ISliceable>();
+				ISliceablee sliceable = hits[i].transform.GetComponent<ISliceablee>();
 				if(sliceable != null)
 				{
 					sliceable.Slice(velocity, angle);

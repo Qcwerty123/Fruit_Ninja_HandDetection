@@ -60,9 +60,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8423080993324309202}
-  - component: {fileID: 435195685333027421}
   - component: {fileID: 6743355920671137184}
   - component: {fileID: 3638101763612953207}
+  - component: {fileID: 8950031022638999943}
+  - component: {fileID: 4513787910070442925}
   m_Layer: 10
   m_Name: Coconut
   m_TagString: Untagged
@@ -86,25 +87,6 @@ Transform:
   - {fileID: 5316289772207528570}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &435195685333027421
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8683917731083510566}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a0225dbb411b29d4ca6aff5b22485045, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  onSliced:
-    m_PersistentCalls:
-      m_Calls: []
-  slicedPrefab: {fileID: 1099126775431098197, guid: 4c288481e746ceb4f88e3eff52e7e56b, type: 3}
-  data:
-    fruit: 0
-    colorInside: {r: 1, g: 1, b: 1, a: 1}
 --- !u!50 &6743355920671137184
 Rigidbody2D:
   serializedVersion: 4
@@ -120,7 +102,7 @@ Rigidbody2D:
   m_Mass: 1
   m_LinearDrag: 0
   m_AngularDrag: 0.05
-  m_GravityScale: 1
+  m_GravityScale: 1.5
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -177,6 +159,54 @@ BoxCollider2D:
   serializedVersion: 2
   m_Size: {x: 1.5, y: 1.5}
   m_EdgeRadius: 0
+--- !u!58 &8950031022638999943
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8683917731083510566}
+  m_Enabled: 1
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_UsedByComposite: 0
+  m_Offset: {x: 0, y: 0}
+  serializedVersion: 2
+  m_Radius: 0.5
+--- !u!114 &4513787910070442925
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8683917731083510566}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 42f7c3e953b7f584fac094947fc97bb6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _loopingAudioSource: {fileID: 0}
 --- !u!1001 &5349016285204232730
 PrefabInstance:
   m_ObjectHideFlags: 0

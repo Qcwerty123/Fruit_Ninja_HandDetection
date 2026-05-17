@@ -17,9 +17,9 @@ MonoBehaviour:
   isBomb: 0
   classicPrefab: {fileID: 4484450060403926459, guid: 1a3f97be495b3f440b418d215583bfeb, type: 3}
   classicSlicedPrefab: {fileID: 6251413482750984522, guid: b51d42d43abddc543a93ec2a146350b6, type: 3}
-  dynamicPrefab: {fileID: 2184114160452929702, guid: e4c13a94a54a95647b47f8610f1a6ec6, type: 3}
+  dynamicPrefab: {fileID: 2184114160452929702, guid: 53bbdc7567181434a835ab9a5c4b4c29, type: 3}
   baseJuiceParticle: {fileID: 3037950481174323527, guid: 4d96e816d3c48a14eaac35ea5a0019dc, type: 3}
-  splashColor: {r: 1, g: 1, b: 1, a: 0.8117647}
+  splashColor: {r: 1, g: 0.2999999, b: 0.2999999, a: 0.8117647}
   specialJuiceParticle: {fileID: 6115219206632827437, guid: 33b1018e0b8927d43b97a08ff6cc6cdd, type: 3}
   impactVFX: {fileID: 1248630449097443032, guid: 55cf6e3c722e2e1409ae32c40a2631d4, type: 3}
   splatterVFX: {fileID: 3037950481174323527, guid: 4d96e816d3c48a14eaac35ea5a0019dc, type: 3}
